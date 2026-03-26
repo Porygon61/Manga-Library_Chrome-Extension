@@ -1078,6 +1078,50 @@ app.post("/data/library/cleanup/covers", (req, res) => {
     });
 });
 
+app.post("/data/library/cleanup/metadata", (req, res) => {
+    db.all(`SELECT * FROM bookmarks`, async (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+
+        let updatedCount = 0;
+        try {
+            for (let row of rows) {
+                // 1. Build a proxy entry using the current database row
+                let entry = {
+                    genres: row.genres,
+                    author: row.author,
+                    artist: row.artist,
+                    type: row.type,
+                    status: row.status,
+                    website: row.website,
+                    nsfw: row.nsfw
+                };
+
+                // 2. Run the existing normalization logic
+                // This will automatically populate the genres/authors/artists tables with missing entries
+                // AND apply existing linking/alias rules to standardize the arrays
+                const normalized = await normalizeEntryData(entry);
+
+                // 3. Save the cleaned-up data back to the bookmark
+                await new Promise((resolve, reject) => {
+                    db.run(
+                        `UPDATE bookmarks SET genres = ?, author = ?, artist = ?, type = ?, nsfw = ? WHERE id = ?`,
+                        [normalized.genres, normalized.author, normalized.artist, normalized.type, normalized.nsfw, row.id],
+                        (updateErr) => {
+                            if (updateErr) reject(updateErr);
+                            else resolve();
+                        }
+                    );
+                });
+                updatedCount++;
+            }
+            res.json({ success: true, updated: updatedCount });
+        } catch (error) {
+            console.error("Metadata Cleanup Error:", error);
+            res.status(500).json({ error: error.message });
+        }
+    });
+});
+
 app.post("/data/library/import", async (req, res) => {
     const { library } = req.body;
     if (!library || !Array.isArray(library))

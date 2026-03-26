@@ -833,12 +833,21 @@
                             >Link alternate names to a primary tag</small
                         ></span
                     >
-                    <button
-                        style="background: var(--accent); color: var(--bg)"
-                        onclick="openMappingManager()"
-                    >
-                        Manage Entities
-                    </button>
+                    <div style="display: flex; gap: 10px">
+                        <button
+                            style="background: var(--accent); color: var(--bg)"
+                            onclick="openMappingManager()"
+                        >
+                            Manage Entities
+                        </button>
+                        <button
+                            id="btnCleanupMeta"
+                            style="background: var(--warning); color: black"
+                            onclick="cleanupMetadata()"
+                        >
+                            Sync & Apply Rules
+                        </button>
+                    </div>
                 </div>
 
                 <div id="mappingOverlay" class="overlay">
@@ -1349,6 +1358,42 @@
                 );
                 const data = await res.json();
                 alert(`Cleaned up ${data.deleted} orphaned cover images!`);
+            }
+
+            async function cleanupMetadata() {
+                if (
+                    !confirm(
+                        "This will scan all bookmarks, extract missing tags into your managers, and apply your linking rules to standardise existing library data. Continue?",
+                    )
+                )
+                    return;
+
+                const btn = document.getElementById("btnCleanupMeta");
+                const originalText = btn.innerText;
+                btn.innerText = "Processing...";
+                btn.disabled = true;
+
+                try {
+                    const res = await fetch(
+                        "http://localhost:3000/data/library/cleanup/metadata",
+                        { method: "POST" },
+                    );
+                    const data = await res.json();
+
+                    if (data.success) {
+                        alert(
+                            `Successfully processed and standardized ${data.updated} bookmarks!`,
+                        );
+                        await fetchData(); // Reload the UI to reflect changes
+                    } else {
+                        alert("Error: " + data.error);
+                    }
+                } catch (e) {
+                    alert("Connection Error: " + e.message);
+                } finally {
+                    btn.innerText = originalText;
+                    btn.disabled = false;
+                }
             }
 
             function exportLib() {

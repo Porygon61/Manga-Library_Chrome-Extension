@@ -162,7 +162,7 @@ async function handleReaderSync() {
 
         const result = await res.json();
         if (result.success) {
-            updateBtn(btn, "✅", "#27ae60", "🕮", true);
+            updateBtn(btn, "✓", "#27ae60", "🕮", true);
             remoteLog("INFO", "UI", "READER_SYNC_SUCCESS", "content.js", {
                 url: baseUrl,
                 chapter: cleanNum,
