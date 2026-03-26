@@ -89,82 +89,119 @@ function toTitleCase(str) {
     );
 }
 
-function normalizeEntryData(entry) {
+async function normalizeEntryData(entry) {
     let extractedType = null;
     const typeKeywords = ["manga", "manhwa", "manhua"];
 
-    let genreMappings = {};
-    let nsfwGenres = [];
-    try {
-        const config = JSON.parse(readFileSync(CONFIG_PATH, "utf-8"));
-        if (config.settings) {
-            genreMappings = config.settings.genre_mappings || {};
-            nsfwGenres = (config.settings.nsfw_genres || []).map((g) =>
-                g.toLowerCase(),
+    const getMappings = (type) =>
+        new Promise((resolve) => {
+            const mainT = type + "s";
+            const mapT = type + "_mapping";
+            const idCol = type + "_id";
+            const query =
+                type === "genre"
+                    ? `SELECT m.name as alias, t.name as main, t.nsfw FROM ${mapT} m JOIN ${mainT} t ON m.${idCol} = t.id`
+                    : `SELECT m.name as alias, t.name as main, 0 as nsfw FROM ${mapT} m JOIN ${mainT} t ON m.${idCol} = t.id`;
+            db.all(query, (err, rows) => resolve(rows || []));
+        });
+
+    const getMainEntities = (type) =>
+        new Promise((resolve) => {
+            db.all(`SELECT * FROM ${type}s`, (err, rows) =>
+                resolve(rows || []),
             );
-        }
-    } catch (e) {}
+        });
 
-    if (entry.genres) {
+    const genreMap = await getMappings("genre");
+    const authorMap = await getMappings("author");
+    const artistMap = await getMappings("artist");
+
+    // Fetch all main entities so we know what already exists
+    const mainGenres = await getMainEntities("genre");
+    const mainAuthors = await getMainEntities("author");
+    const mainArtists = await getMainEntities("artist");
+
+    // Made this async so we can safely await database insertions
+    const mapItems = async (
+        itemsStr,
+        mappings,
+        mainList,
+        isGenre,
+        typeName,
+    ) => {
+        if (!itemsStr) return [];
+        let parsed = [];
         try {
-            let parsed = Array.isArray(entry.genres)
-                ? entry.genres
-                : JSON.parse(entry.genres);
+            parsed = Array.isArray(itemsStr) ? itemsStr : JSON.parse(itemsStr);
+        } catch (e) {
+            parsed =
+                typeof itemsStr === "string"
+                    ? itemsStr.split(",").map((s) => s.trim())
+                    : [itemsStr];
+        }
 
-            let filteredGenres = [];
+        let result = [];
+        for (const item of parsed) {
+            if (!item) continue;
+            let cleanItem = item.toString().trim();
+            let lowerItem = cleanItem.toLowerCase();
 
-            parsed.forEach((g) => {
-                let cleanGenre = g.trim();
-                let lowerG = cleanGenre.toLowerCase();
+            if (isGenre && typeKeywords.includes(lowerItem)) {
+                extractedType = toTitleCase(cleanItem);
+                continue; // Skip adding type to genres
+            }
 
-                // Apply Mappings
-                if (genreMappings[lowerG]) {
-                    cleanGenre = genreMappings[lowerG];
-                    lowerG = cleanGenre.toLowerCase();
+            const matchedAlias = mappings.find(
+                (m) => m.alias.toLowerCase() === lowerItem,
+            );
+            if (matchedAlias) {
+                if (matchedAlias.main.toUpperCase() === "IGNORE") {
+                    continue;
                 }
-
-                // Apply NSFW Flagging
-                if (nsfwGenres.includes(lowerG)) {
+                result.push(matchedAlias.main);
+                if (isGenre && matchedAlias.nsfw === 1) entry.nsfw = 1;
+            } else {
+                const matchedMain = mainList.find(
+                    (m) => m.name.toLowerCase() === lowerItem,
+                );
+                if (isGenre && matchedMain && matchedMain.nsfw === 1) {
                     entry.nsfw = 1;
                 }
 
-                // If it's a type keyword, save it as the type instead of a genre
-                if (typeKeywords.includes(lowerG)) {
-                    extractedType = toTitleCase(cleanGenre);
-                } else if (cleanGenre !== "") {
-                    filteredGenres.push(toTitleCase(cleanGenre));
+                // NEW: Auto-insert if completely unknown
+                if (!matchedMain && cleanItem !== "") {
+                    const titleCased = toTitleCase(cleanItem);
+                    await new Promise((resolve) => {
+                        const insertSql = isGenre
+                            ? `INSERT OR IGNORE INTO ${typeName}s (name, nsfw) VALUES (?, 0)`
+                            : `INSERT OR IGNORE INTO ${typeName}s (name) VALUES (?)`;
+                        db.run(insertSql, [titleCased], () => resolve());
+                    });
+                    // Optimistically add to list for this run
+                    mainList.push({ name: titleCased, nsfw: 0 });
                 }
-            });
+                if (toTitleCase(cleanItem).toUpperCase() === "IGNORE") continue;
 
-            entry.genres = JSON.stringify([...new Set(filteredGenres)]);
-        } catch (e) {
-            let g = entry.genres.toString().trim();
-            let lowerG = g.toLowerCase();
-
-            if (genreMappings[lowerG]) {
-                g = genreMappings[lowerG];
-                lowerG = g.toLowerCase();
-            }
-
-            if (nsfwGenres.includes(lowerG)) {
-                entry.nsfw = 1;
-            }
-
-            if (typeKeywords.includes(lowerG)) {
-                extractedType = toTitleCase(g);
-                entry.genres = JSON.stringify([]);
-            } else {
-                entry.genres = JSON.stringify([toTitleCase(g)]);
+                result.push(toTitleCase(cleanItem));
             }
         }
-    }
+        return [...new Set(result)];
+    };
 
-    // Apply the extracted type if the scraper didn't explicitly find one
-    if (extractedType && (!entry.type || entry.type.trim() === "")) {
+    // Note the 'await' and the 'typeName' string passed at the end
+    entry.genres = JSON.stringify(
+        await mapItems(entry.genres, genreMap, mainGenres, true, "genre"),
+    );
+    entry.author = JSON.stringify(
+        await mapItems(entry.author, authorMap, mainAuthors, false, "author"),
+    );
+    entry.artist = JSON.stringify(
+        await mapItems(entry.artist, artistMap, mainArtists, false, "artist"),
+    );
+
+    if (extractedType && (!entry.type || entry.type.trim() === ""))
         entry.type = extractedType;
-    } else if (entry.type) {
-        entry.type = toTitleCase(entry.type.trim());
-    }
+    else if (entry.type) entry.type = toTitleCase(entry.type.trim());
 
     if (entry.status) entry.status = toTitleCase(entry.status.trim());
     if (entry.website) entry.website = entry.website.toLowerCase().trim();
@@ -183,7 +220,6 @@ function syncTableSchema() {
 
         db.serialize(() => {
             db.run("PRAGMA foreign_keys = ON");
-
             for (const [tableName, schema] of Object.entries(tables)) {
                 const columnEntries = Object.entries(schema).filter(
                     ([k]) => !k.startsWith("FOREIGN KEY"),
@@ -191,7 +227,6 @@ function syncTableSchema() {
                 const foreignKeyEntries = Object.entries(schema).filter(([k]) =>
                     k.startsWith("FOREIGN KEY"),
                 );
-
                 const colDefinitions = columnEntries
                     .map(([c, t]) => `"${c}" ${t}`)
                     .join(", ");
@@ -209,27 +244,10 @@ function syncTableSchema() {
                 db.all(
                     `PRAGMA table_info(${tableName})`,
                     (err, existingCols) => {
-                        if (err) {
-                            sysLog(
-                                "ERROR",
-                                "DB",
-                                "SCHEMA_CHECK_FAILED",
-                                "server.js",
-                                { error: err.message, table: tableName },
-                            );
-                            return;
-                        }
+                        if (err) return;
                         const existingNames = existingCols.map((c) => c.name);
-
                         columnEntries.forEach(([colName, colType]) => {
                             if (!existingNames.includes(colName)) {
-                                sysLog(
-                                    "INFO",
-                                    "DB",
-                                    "ALTER_TABLE",
-                                    "server.js",
-                                    { table: tableName, column: colName },
-                                );
                                 db.run(
                                     `ALTER TABLE ${tableName} ADD COLUMN "${colName}" ${colType}`,
                                 );
@@ -238,29 +256,9 @@ function syncTableSchema() {
                     },
                 );
             }
-            db.run(`
-                CREATE TRIGGER IF NOT EXISTS update_bookmarks_timestamp
-                AFTER UPDATE ON bookmarks
-                FOR EACH ROW
-                WHEN NEW.timestamp IS OLD.timestamp
-                BEGIN
-                    UPDATE bookmarks SET timestamp = (datetime('now', 'localtime')) WHERE id = NEW.id;
-                END;
-            `);
         });
-        console.log("✅ Database structure verified and synced.");
-        sysLog(
-            "INFO",
-            "SYSTEM",
-            "SERVER_STARTUP",
-            "server.js",
-            "Database verified and synced",
-        );
     } catch (e) {
         console.error("❌ Schema Error:", e.message);
-        sysLog("ERROR", "DB", "SCHEMA_SYNC_ERROR", "server.js", {
-            error: e.message,
-        });
     }
 }
 syncTableSchema();
@@ -274,11 +272,7 @@ function sysLog(level, category, action, source, data = null) {
     db.run(
         `INSERT INTO logs (level, category, action, source, data) VALUES (?, ?, ?, ?, ?)`,
         [level, category, action, source, dataStr],
-        (err) => {
-            if (err) console.error("Logging failed:", err);
-        },
     );
-    // Also print to terminal for real-time debugging
     console.log(
         `[${new Date().toLocaleString()}] ${level} [${category}]: ${action}`,
     );
@@ -383,6 +377,79 @@ async function linkUrl(bookmarkId, url, websiteName, res) {
 /**
  * ENDPOINTS
  */
+
+/* MAPPING ENDPOINTS */
+app.get("/data/mappings/:type", (req, res) => {
+    const type = req.params.type;
+    const mainTable = type + "s";
+    const mapTable = type + "_mapping";
+    const idCol = type + "_id";
+
+    db.all(
+        `SELECT t.id, t.name, ${type === "genre" ? "t.nsfw" : "0 as nsfw"}, json_group_array(m.name) as aliases 
+            FROM ${mainTable} t LEFT JOIN ${mapTable} m ON t.id = m.${idCol} GROUP BY t.id`,
+        (err, rows) => {
+            if (err) return res.status(500).json({ error: err.message });
+            rows = rows.map((r) => {
+                let aliases = JSON.parse(r.aliases);
+                if (aliases.length === 1 && aliases[0] === null) aliases = [];
+                return { ...r, aliases };
+            });
+            res.json(rows);
+        },
+    );
+});
+
+app.patch("/data/mappings/:type/main/:id", (req, res) => {
+    const table = req.params.type + "s";
+    db.run(
+        `UPDATE ${table} SET nsfw = ? WHERE id = ?`,
+        [req.body.nsfw ? 1 : 0, req.params.id],
+        (err) => {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ success: true });
+        },
+    );
+});
+
+app.post("/data/mappings/:type/alias", (req, res) => {
+    const { mainId, alias } = req.body;
+    const mapTable = req.params.type + "_mapping";
+    const mainTable = req.params.type + "s";
+    const idCol = req.params.type + "_id";
+
+    db.serialize(() => {
+        db.run(
+            `INSERT INTO ${mapTable} (name, ${idCol}) VALUES (?, ?)`,
+            [alias, mainId],
+            function (err) {
+                if (err) return res.status(500).json({ error: err.message });
+                db.run(
+                    `DELETE FROM ${mainTable} WHERE name = ?`,
+                    [alias],
+                    () => {
+                        res.json({ success: true });
+                    },
+                );
+            },
+        );
+    });
+});
+
+app.delete("/data/mappings/:type/alias/:name", (req, res) => {
+    const mapTable = req.params.type + "_mapping";
+    db.run(
+        `DELETE FROM ${mapTable} WHERE name = ?`,
+        [req.params.name],
+        function (err) {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ success: true });
+        },
+    );
+});
+/* END MAPPING ENDPOINTS */
+
+/* PROXY ENDPOINT */
 app.get("/proxy-image", async (req, res) => {
     const imageUrl = req.query.url;
     if (!imageUrl || imageUrl === "undefined" || imageUrl === "null") {
@@ -424,11 +491,24 @@ app.get("/proxy-image", async (req, res) => {
         res.status(404).send("Image could not be proxied");
     }
 });
+/* END PROXY ENDPOINT */
 
 app.get("/data/config", (req, res) => {
     if (existsSync(CONFIG_PATH))
         res.json(JSON.parse(readFileSync(CONFIG_PATH, "utf-8")));
     else res.status(404).json({ error: "Config not found" });
+});
+
+app.post("/data/config", (req, res) => {
+    try {
+        require("fs").writeFileSync(
+            CONFIG_PATH,
+            JSON.stringify(req.body, null, 2),
+        );
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 app.post("/data/library/search", (req, res) => {
@@ -474,7 +554,7 @@ app.post("/data/library/entry", async (req, res) => {
         );
     }
 
-    entry = normalizeEntryData(entry);
+    entry = await normalizeEntryData(entry);
 
     const originalWebsite = entry.website;
 
@@ -559,56 +639,65 @@ app.post("/data/library/entry", async (req, res) => {
                 if (existingManga) {
                     let conflicts = {};
 
-                    config.db.validation.requires_approval.forEach((field) => {
-                        const existingVal = existingManga[field] || "";
-                        const incomingVal = entry[field];
+                    config.settings.validation.requires_approval.forEach(
+                        (field) => {
+                            const existingVal = existingManga[field] || "";
+                            const incomingVal = entry[field];
 
-                        if (field === "cover_image" && incomingVal) {
-                            if (
-                                !existingVal.includes(incomingVal) &&
-                                incomingVal.startsWith("http") &&
-                                !incomingVal.includes("localhost:3000/covers/")
+                            if (field === "cover_image" && incomingVal) {
+                                if (
+                                    !existingVal.includes(incomingVal) &&
+                                    incomingVal.startsWith("http") &&
+                                    !incomingVal.includes(
+                                        "localhost:3000/covers/",
+                                    )
+                                ) {
+                                    conflicts[field] = incomingVal;
+                                }
+                            } else if (
+                                field !== "summary" && // Prevent summary strings starting with [ from acting like arrays
+                                (Array.isArray(incomingVal) ||
+                                    (typeof incomingVal === "string" &&
+                                        incomingVal.startsWith("[")))
+                            ) {
+                                let existingArr = [];
+                                try {
+                                    existingArr = JSON.parse(existingVal);
+                                } catch (e) {
+                                    existingArr = existingVal
+                                        ? [existingVal]
+                                        : [];
+                                }
+                                let incomingArr = [];
+                                try {
+                                    incomingArr = Array.isArray(incomingVal)
+                                        ? incomingVal
+                                        : JSON.parse(incomingVal);
+                                } catch (e) {
+                                    incomingArr = [incomingVal];
+                                }
+
+                                const existingSorted = [...existingArr]
+                                    .sort()
+                                    .join("|");
+                                const incomingSorted = [...incomingArr]
+                                    .sort()
+                                    .join("|");
+
+                                if (
+                                    incomingArr.length > 0 &&
+                                    existingSorted !== incomingSorted
+                                ) {
+                                    conflicts[field] = incomingArr;
+                                }
+                            } else if (
+                                incomingVal &&
+                                existingVal !== incomingVal
                             ) {
                                 conflicts[field] = incomingVal;
                             }
-                        } else if (
-                            field !== "summary" && // Prevent summary strings starting with [ from acting like arrays
-                            (Array.isArray(incomingVal) ||
-                                (typeof incomingVal === "string" &&
-                                    incomingVal.startsWith("[")))
-                        ) {
-                            let existingArr = [];
-                            try {
-                                existingArr = JSON.parse(existingVal);
-                            } catch (e) {
-                                existingArr = existingVal ? [existingVal] : [];
-                            }
-                            let incomingArr = [];
-                            try {
-                                incomingArr = Array.isArray(incomingVal)
-                                    ? incomingVal
-                                    : JSON.parse(incomingVal);
-                            } catch (e) {
-                                incomingArr = [incomingVal];
-                            }
-
-                            const existingSorted = [...existingArr]
-                                .sort()
-                                .join("|");
-                            const incomingSorted = [...incomingArr]
-                                .sort()
-                                .join("|");
-
-                            if (
-                                incomingArr.length > 0 &&
-                                existingSorted !== incomingSorted
-                            ) {
-                                conflicts[field] = incomingArr;
-                            }
-                        } else if (incomingVal && existingVal !== incomingVal) {
-                            conflicts[field] = incomingVal;
-                        }
-                    });
+                        },
+                    );
 
                     if (Object.keys(conflicts).length > 0) {
                         db.run(
@@ -676,7 +765,7 @@ app.post("/data/library/entry", async (req, res) => {
                         );
                     }
 
-                    config.db.validation.auto_update.forEach((field) => {
+                    config.settings.validation.auto_update.forEach((field) => {
                         if (field === "website") return;
                         let incomingVal = entry[field];
 

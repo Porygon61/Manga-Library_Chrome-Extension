@@ -3,12 +3,19 @@ let globalSettings = {
     enableProgressSyncBtn: true,
     enableAddNewMangaBtn: true,
 };
-let utils = null;
 
-async function initContentScript() {
-    if (!utils) {
-        utils = await import(chrome.runtime.getURL("frontend/util/common.js"));
+async function remoteLog(level, category, action, source, data = null) {
+    try {
+        await fetch("http://localhost:3000/data/logs", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ level, category, action, source, data }),
+        });
+    } catch (e) {
+        console.error("Remote logging failed:", e);
     }
+}
+async function initContentScript() {
     // Cleanup old buttons on SPA navigation
     const oldBtn = document.getElementById("manga-sync-fixed-btn");
     if (oldBtn) oldBtn.remove();

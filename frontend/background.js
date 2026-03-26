@@ -1,4 +1,4 @@
-import { executeScraper } from "./scraper.js";
+import { executeScraper } from "./util/scraper.js";
 import { remoteLog } from "./util/common.js";
 
 const SERVER_URL = "http://localhost:3000/data/config";
@@ -142,14 +142,20 @@ async function handleBackgroundSync(tabUrl, tabId) {
                         current_chapter: currentProgress,
                         website: domain,
                     };
-                    await fetch("http://localhost:3000/data/library/entry", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            url: mangaIdUrl,
-                            entry: syncedEntry,
-                        }),
-                    });
+                    const res = await fetch(
+                        "http://localhost:3000/data/library/entry",
+                        {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                url: mangaIdUrl,
+                                entry: syncedEntry,
+                            }),
+                        },
+                    );
+
+                    if (!res.ok) throw new Error("Server returned an error");
+
                     remoteLog(
                         "INFO",
                         "API",
