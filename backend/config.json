@@ -1,0 +1,471 @@
+{
+  "settings": {
+    "enableProgressSyncBtn": true,
+    "enableAddNewMangaBtn": true,
+    "validation": {
+      "requires_approval": [
+        "cover_image",
+        "title",
+        "alt_title",
+        "author",
+        "artist",
+        "status",
+        "type",
+        "genres",
+        "release_year",
+        "summary"
+      ],
+      "auto_update": [
+        "latest_chapter",
+        "latest_chapter_update_date",
+        "rating",
+        "website",
+        "timestamp"
+      ]
+    }
+  },
+  "websites": {
+    "mangago.me": {
+      "name": "MangaGo",
+      "url_base": "https://www.mangago.me/read-manga/",
+      "manga_url_selector": "",
+      "selectors": {
+        "author": {
+          "query": ".manga_right tr:nth-child(2) a",
+          "type": "array"
+        },
+        "genres": {
+          "query": ".manga_right tr:nth-child(3) a",
+          "type": "array"
+        },
+        "release_year": ".manga_right tr:nth-child(2)",
+        "status": ".manga_right tr:first-child",
+        "title": "h1",
+        "alt_title": {
+          "query": ".manga_right tr:nth-child(4)",
+          "type": "array",
+          "split_by": ";"
+        },
+        "latest_chapter": "#chapter_table tr:first-child .chico b",
+        "latest_chapter_update_date": "#chapter_table tr:first-child td:nth-child(3)",
+        "rating": "#interest_sectl .rating_num",
+        "cover_image": ".cover img",
+        "read_chapter_num": "#dropdown-chapter-page",
+        "summary": ".manga_summary",
+        "artist": "",
+        "type": ""
+      },
+      "selector_exclusions": {
+        "release_year": "label, a",
+        "status": "span>a, label",
+        "alt_title": "label",
+        "summary": "div"
+      },
+      "string_replacements": {
+        "latest_chapter": [
+          "Ch."
+        ],
+        "release_year": [
+          ",",
+          "released."
+        ],
+        "read_chapter_num": [
+          "Ch.",
+          "/\\b[Vv]ol\\.\\s*\\d+\\b/g"
+        ],
+        "summary": [
+          "not found..."
+        ]
+      },
+      "site_structure": {
+        "info_page": "^https://www\\.mangago\\.me/read-manga/[^/]+/?$",
+        "reading_page": "^https://www\\.mangago\\.me/read-manga/[^/]+/.+/?$"
+      },
+      "features": {
+        "quickSync": [
+          "info_page"
+        ],
+        "autoUpdateCurChapter": [
+          "reading_page"
+        ]
+      }
+    },
+    "asurascans.com": {
+      "name": "AsuraScans",
+      "url_base": "https://asurascans.com/comics/",
+      "manga_url_selector": "",
+      "selectors": {
+        "author": {
+          "query": "div.rounded:nth-of-type(1) a",
+          "type": "array"
+        },
+        "genres": {
+          "query": "a.flex-shrink-0",
+          "type": "array"
+        },
+        "release_year": "",
+        "status": "span.capitalize.text-base",
+        "title": "h1",
+        "alt_title": {
+          "query": "p.leading-relaxed",
+          "type": "array",
+          "split_by": "•"
+        },
+        "latest_chapter": "a:nth-of-type(1) span.text-white.font-medium",
+        "latest_chapter_update_date": "a:nth-of-type(1) .flex-shrink-0 span",
+        "rating": "span.bg-gradient-to-r.font-bold.text-xl",
+        "cover_image": {
+          "query": ".rounded-xl img",
+          "take_first": true
+        },
+        "read_chapter_num": "span.text-zinc-100",
+        "summary": ".text-sm p",
+        "artist": {
+          "query": "div.justify-between:nth-of-type(2) a",
+          "type": "array"
+        },
+        "type": "span.uppercase.text-base"
+      },
+      "selector_exclusions": {},
+      "string_replacements": {
+        "summary": [
+          "[By ",
+          "that brought you <",
+          ">!]"
+        ],
+        "read_chapter_num": [
+          "/-(.*)/g"
+        ],
+        "latest_chapter": [
+          "Chapter"
+        ]
+      },
+      "site_structure": {
+        "info_page": "^https://asurascans\\.com/comics/[^/]+/?$",
+        "reading_page": "^https://asurascans\\.com/comics/[^/]+/chapter/\\d+/?$"
+      },
+      "features": {
+        "quickSync": [
+          "info_page"
+        ],
+        "autoUpdateCurChapter": [
+          "reading_page"
+        ]
+      }
+    },
+    "manhuaus.com": {
+      "name": "ManhuaUS",
+      "url_base": "https://manhuaus.com/manga/",
+      "manga_url_selector": "",
+      "selectors": {
+        "author": "",
+        "genres": {
+          "query": ".genres-content a",
+          "type": "array"
+        },
+        "release_year": "",
+        "status": ".post-status div.summary-content",
+        "title": ".post-title h1",
+        "alt_title": {
+          "query": "div.post-content_item:nth-of-type(3) div.summary-content",
+          "type": "array"
+        },
+        "latest_chapter": "li.wp-manga-chapter:nth-of-type(1) a",
+        "latest_chapter_update_date": "li:nth-of-type(1) .chapter-release-date i",
+        "rating": "",
+        "cover_image": ".summary_image img",
+        "read_chapter_num": "li.active",
+        "summary": ".summary__content p",
+        "artist": "",
+        "type": ""
+      },
+      "selector_exclusions": {},
+      "string_replacements": {
+        "latest_chapter": [
+          "Chapter"
+        ],
+        "read_chapter_num": [
+          "Chapter"
+        ]
+      },
+      "site_structure": {
+        "info_page": "^https://manhuaus\\.com/manga/[^/]+/?$",
+        "reading_page": "^https://manhuaus\\.com/manga/[^/]+/[^/]+/?$"
+      },
+      "features": {
+        "quickSync": [
+          "info_page"
+        ],
+        "autoUpdateCurChapter": [
+          "reading_page"
+        ]
+      }
+    },
+    "mangadex.org": {
+      "name": "MangaDex",
+      "url_base": "https://mangadex.org/title/",
+      "manga_url_selector": "a.reader--header-manga",
+      "selectors": {
+        "author": {
+          "query": "#author_undefined span",
+          "type": "array"
+        },
+        "genres": {
+          "query": "div.tags-row > *",
+          "type": "array"
+        },
+        "release_year": ".dot span",
+        "status": ".dot span",
+        "title": "p.mb-1",
+        "alt_title": {
+          "query": ".gap-6 .mb-1 span",
+          "type": "array"
+        },
+        "latest_chapter": {
+          "query": "div.bg-accent:nth-of-type(1) span.line-clamp-1",
+          "take_first": true
+        },
+        "latest_chapter_update_date": {
+          "query": "div.bg-accent:nth-of-type(1) time",
+          "take_first": true
+        },
+        "rating": "span.text-primary",
+        "cover_image": ".group[data-v-30788884] img.rounded",
+        "read_chapter_num": "div.chapter",
+        "summary": ".md-md-container p",
+        "artist": {
+          "query": "#artist_undefined span",
+          "type": "array"
+        },
+        "type": ""
+      },
+      "selector_exclusions": {},
+      "string_replacements": {
+        "release_year": [
+          "/\\D/g"
+        ],
+        "status": [
+          "Publication: ",
+          "/\\d+/g",
+          ","
+        ],
+        "summary": [
+          "Link: "
+        ],
+        "read_chapter_num": [
+          "Ch.",
+          "/\\b[Vv]ol\\.\\s*\\d+\\b/g"
+        ]
+      },
+      "site_structure": {
+        "info_page": "^https://mangadex\\.org/title/[a-f0-9\\-]+",
+        "reading_page": "^https://mangadex\\.org/chapter/[a-f0-9\\-]+"
+      },
+      "features": {
+        "quickSync": [
+          "info_page"
+        ],
+        "autoUpdateCurChapter": [
+          "reading_page"
+        ]
+      }
+    },
+    "rizzcomic.com": {
+      "name": "RizzComic",
+      "url_base": "https://rizzcomic.com/manga/",
+      "manga_url_selector": ".ts-breadcrumb a[href*='/manga/']",
+      "selectors": {
+        "author": {
+          "query": "xpath://div[contains(@class, 'imptdt') and contains(text(), 'Author')]/i",
+          "type": "array"
+        },
+        "genres": {
+          "query": ".mgen a",
+          "type": "array"
+        },
+        "release_year": "xpath://div[contains(@class, 'imptdt') and contains(text(), 'Released')]/i",
+        "status": "xpath://div[contains(@class, 'imptdt') and contains(text(), 'Status')]/i",
+        "title": "h1",
+        "alt_title": "",
+        "latest_chapter": {
+          "query": "div#chapterlist span.chapternum",
+          "take_first": true
+        },
+        "latest_chapter_update_date": {
+          "query": "div#chapterlist span.chapterdate",
+          "take_first": true
+        },
+        "rating": "div[itemprop='ratingValue']",
+        "cover_image": "img[itemprop='image']",
+        "read_chapter_num": "span:nth-of-type(3) span[itemprop='name']",
+        "summary": "[itemprop='description'] p",
+        "artist": {
+          "query": "xpath://div[contains(@class, 'imptdt') and contains(text(), 'Artist')]/i",
+          "type": "array"
+        },
+        "type": "xpath://div[contains(@class, 'imptdt') and contains(text(), 'Type')]/a"
+      },
+      "selector_exclusions": {},
+      "string_replacements": {
+        "read_chapter_num": [
+          "/\\D/g"
+        ],
+        "latest_chapter": [
+          "Chapter"
+        ]
+      },
+      "site_structure": {
+        "info_page": "^https://rizzcomic\\.com/manga/[a-zA-Z0-9\\-]+/?$",
+        "reading_page": "^https://rizzcomic\\.com/(?!manga/)[a-zA-Z0-9\\-]+-chapter-[0-9.]+/?$"
+      },
+      "features": {
+        "quickSync": [
+          "info_page"
+        ],
+        "autoUpdateCurChapter": [
+          "reading_page"
+        ]
+      }
+    },
+    "toongod.org": {
+      "name": "ToonGod",
+      "url_base": "https://toongod.org/webtoon/",
+      "manga_url_selector": ".breadcrumb li:nth-child(2) a",
+      "selectors": {
+        "author": {
+          "query": ".author-content a",
+          "type": "array"
+        },
+        "genres": {
+          "query": ".genres-content a",
+          "type": "array"
+        },
+        "release_year": "xpath://div[contains(@class, 'post-content_item') and descendant::h5[contains(text(), 'Release')]]/div[contains(@class, 'summary-content')] a",
+        "status": "xpath://div[contains(@class, 'post-content_item') and descendant::h5[contains(text(), 'Status')]]/div[contains(@class, 'summary-content')]",
+        "title": "h1",
+        "alt_title": {
+          "query": "xpath://div[contains(@class, 'post-content_item') and descendant::h5[contains(text(), 'Alternative')]]/div[contains(@class, 'summary-content')]",
+          "type": "array"
+        },
+        "latest_chapter": {
+          "query": "li.wp-manga-chapter:nth-of-type(1) > a",
+          "take_first": true
+        },
+        "latest_chapter_update_date": {
+          "query": "li:nth-of-type(1) .chapter-release-date i, li:nth-of-type(1) .chapter-release-date a",
+          "take_first": true
+        },
+        "rating": ".post-total-rating span",
+        "cover_image": ".summary_image img",
+        "read_chapter_num": "li.active",
+        "summary": ".summary__content p:nth-of-type(1)",
+        "artist": {
+          "query": ".artist-content a",
+          "type": "array"
+        },
+        "type": "xpath://div[contains(@class, 'post-content_item') and descendant::h5[contains(text(), 'Type')]]/div[contains(@class, 'summary-content')]"
+      },
+      "selector_exclusions": {},
+      "string_replacements": {
+        "latest_chapter": [
+          "Chapter"
+        ],
+        "read_chapter_num": [
+          "Chapter"
+        ]
+      },
+      "site_structure": {
+        "info_page": "^https://www\\.toongod\\.org/webtoon/[^/]+/?$",
+        "reading_page": "^https://www\\.toongod\\.org/webtoon/[^/]+/[^/]+/?$"
+      },
+      "features": {
+        "quickSync": [
+          "info_page"
+        ],
+        "autoUpdateCurChapter": [
+          "reading_page"
+        ]
+      }
+    }
+  },
+  "db": {
+    "tables": {
+      "bookmarks": {
+        "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
+        "current_chapter": "TEXT",
+        "title": "TEXT UNIQUE",
+        "alt_title": "TEXT",
+        "type": "TEXT",
+        "cover_image": "TEXT",
+        "latest_chapter": "TEXT",
+        "latest_chapter_update_date": "TEXT",
+        "author": "TEXT",
+        "artist": "TEXT",
+        "rating": "TEXT",
+        "genres": "TEXT",
+        "release_year": "TEXT",
+        "status": "TEXT",
+        "website": "TEXT",
+        "summary": "TEXT",
+        "nsfw": "INTEGER DEFAULT 0",
+        "timestamp": "DATETIME DEFAULT (datetime('now', 'localtime'))"
+      },
+      "url_mapping": {
+        "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
+        "bookmark_id": "INTEGER",
+        "url": "TEXT UNIQUE",
+        "website": "TEXT",
+        "FOREIGN KEY(bookmark_id)": "REFERENCES bookmarks(id)"
+      },
+      "pending_updates": {
+        "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
+        "bookmark_id": "INTEGER",
+        "proposed_data": "TEXT",
+        "full_entry": "TEXT",
+        "source_url": "TEXT",
+        "timestamp": "DATETIME DEFAULT (datetime('now', 'localtime'))",
+        "FOREIGN KEY(bookmark_id)": "REFERENCES bookmarks(id)"
+      },
+      "logs": {
+        "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
+        "timestamp": "DATETIME DEFAULT (datetime('now', 'localtime'))",
+        "level": "TEXT",
+        "category": "TEXT",
+        "action": "TEXT",
+        "source": "TEXT",
+        "data": "TEXT"
+      },
+      "genres": {
+        "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
+        "name": "TEXT UNIQUE",
+        "nsfw": "INTEGER DEFAULT 0"
+      },
+      "genre_mapping": {
+        "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
+        "name": "TEXT",
+        "genre_id": "INTEGER",
+        "FOREIGN KEY(genre_id)": "REFERENCES genres(id)"
+      },
+      "artists": {
+        "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
+        "name": "TEXT UNIQUE"
+      },
+      "artist_mapping": {
+        "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
+        "name": "TEXT",
+        "artist_id": "INTEGER",
+        "FOREIGN KEY(artist_id)": "REFERENCES artists(id)"
+      },
+      "authors": {
+        "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
+        "name": "TEXT UNIQUE"
+      },
+      "author_mapping": {
+        "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
+        "name": "TEXT",
+        "author_id": "INTEGER",
+        "FOREIGN KEY(author_id)": "REFERENCES authors(id)"
+      }
+    }
+  }
+}
