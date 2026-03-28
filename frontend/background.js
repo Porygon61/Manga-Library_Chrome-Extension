@@ -13,6 +13,12 @@ chrome.runtime.onInstalled.addListener(() => {
     });
 });
 
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+    if (changeInfo.status === "complete") {
+        checkConnection();
+    }
+});
+
 function updateBadge(connected) {
     const text = connected ? "ON" : "OFF";
     const color = connected ? "#4CAF50" : "#F44336";
