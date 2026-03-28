@@ -16,9 +16,14 @@ async function remoteLog(level, category, action, source, data = null) {
     }
 }
 async function initContentScript() {
-    // Cleanup old buttons on SPA navigation
+    const storage = await chrome.storage.local.get("isConnected");
+
     const oldBtn = document.getElementById("manga-sync-fixed-btn");
     if (oldBtn) oldBtn.remove();
+
+    if (!storage.isConnected) {
+        return;
+    }
 
     try {
         const response = await fetch("http://localhost:3000/data/config");

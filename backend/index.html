@@ -210,10 +210,17 @@
             .modal-card {
                 background: var(--card);
                 max-width: 900px;
+
                 margin: auto;
                 border-radius: 12px;
                 padding: 20px;
                 border: 2px solid var(--accent);
+            }
+            #mappingOverlay .modal-card {
+                max-height: 85vh;
+                overflow: hidden;
+                display: flex;
+                
             }
 
             /* Toggle Switch Styling */
@@ -849,163 +856,6 @@
                         </button>
                     </div>
                 </div>
-
-                <div id="mappingOverlay" class="overlay">
-                    <div
-                        class="modal-card"
-                        style="
-                            max-width: 800px;
-                            display: flex;
-                            flex-direction: column;
-                        "
-                    >
-                        <h2 style="color: var(--accent); margin-top: 0">
-                            Entity Linking Manager
-                        </h2>
-
-                        <div
-                            style="
-                                display: flex;
-                                gap: 10px;
-                                margin-bottom: 20px;
-                            "
-                        >
-                            <button
-                                class="btn-std"
-                                onclick="loadMappingType('genre')"
-                            >
-                                Genres
-                            </button>
-                            <button
-                                class="btn-std"
-                                onclick="loadMappingType('author')"
-                            >
-                                Authors
-                            </button>
-                            <button
-                                class="btn-std"
-                                onclick="loadMappingType('artist')"
-                            >
-                                Artists
-                            </button>
-                        </div>
-
-                        <div
-                            style="
-                                display: flex;
-                                gap: 20px;
-                                flex: 1;
-                                min-height: 350px;
-                            "
-                        >
-                            <div
-                                style="
-                                    flex: 1;
-                                    border-right: 1px solid var(--secondary);
-                                    padding-right: 10px;
-                                    display: flex;
-                                    flex-direction: column;
-                                "
-                            >
-                                <h3>Main Entities</h3>
-                                <input
-                                    type="text"
-                                    id="entitySearch"
-                                    placeholder="Filter entities..."
-                                    class="edit-input"
-                                    oninput="filterEntities()"
-                                    style="margin-bottom: 10px"
-                                />
-                                <ul
-                                    id="mainEntityList"
-                                    style="
-                                        list-style: none;
-                                        padding: 0;
-                                        margin: 0;
-                                        overflow-y: auto;
-                                        flex: 1;
-                                        border: 1px solid #334155;
-                                        border-radius: 6px;
-                                    "
-                                ></ul>
-                            </div>
-
-                            <div
-                                style="
-                                    flex: 1;
-                                    padding-left: 10px;
-                                    display: flex;
-                                    flex-direction: column;
-                                "
-                            >
-                                <h3 id="aliasListHeader">
-                                    Select a Main Entity
-                                </h3>
-
-                                <div
-                                    style="
-                                        background: #0f172a;
-                                        padding: 15px;
-                                        border-radius: 6px;
-                                        margin-bottom: 15px;
-                                    "
-                                >
-                                    <label
-                                        style="
-                                            font-size: 13px;
-                                            color: var(--secondary);
-                                            display: block;
-                                            margin-bottom: 5px;
-                                        "
-                                        >Merge an existing tag into this
-                                        one:</label
-                                    >
-                                    <div style="display: flex; gap: 5px">
-                                        <select
-                                            id="availableTagsDropdown"
-                                            class="edit-input"
-                                            disabled
-                                            style="margin: 0; flex: 1"
-                                        ></select>
-                                        <button
-                                            id="addAliasBtn"
-                                            onclick="linkAlias()"
-                                            style="background: var(--success)"
-                                            disabled
-                                        >
-                                            Link
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <h4 style="margin: 0 0 10px 0">
-                                    Current Aliases
-                                </h4>
-                                <ul
-                                    id="aliasList"
-                                    style="
-                                        list-style: none;
-                                        padding: 0;
-                                        margin: 0;
-                                        overflow-y: auto;
-                                        flex: 1;
-                                        border: 1px solid #334155;
-                                        border-radius: 6px;
-                                    "
-                                ></ul>
-                            </div>
-                        </div>
-
-                        <div style="text-align: right; margin-top: 20px">
-                            <button
-                                onclick="closeMappingManager()"
-                                style="background: #475569; padding: 10px 20px"
-                            >
-                                Close
-                            </button>
-                        </div>
-                    </div>
-                </div>
                 <div class="setting-row">
                     <span
                         ><strong>Storage Cleanup</strong><br /><small
@@ -1051,6 +901,162 @@
                     >
                         Close
                     </button>
+                </div>
+            </div>
+        </div>
+        <div id="mappingOverlay" class="overlay">
+            <div
+                class="modal-card"
+                style="max-width: 800px; display: flex; flex-direction: column"
+            >
+                <div
+                    style="
+                        flex: 1;
+                        display: flex;
+                        flex-direction: row;
+                        justify-content: space-between;
+                    "
+                >
+                    <h2 style="color: var(--accent); margin-top: 0">
+                        Entity Linking Manager
+                    </h2>
+                    <div style="text-align: right; margin-top: 20px">
+                        <button
+                            onclick="closeMappingManager()"
+                            style="background: #475569; padding: 10px 20px"
+                        >
+                            Close
+                        </button>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 10px; margin-bottom: 20px">
+                    <button class="btn-std" onclick="loadMappingType('genre')">
+                        Genres
+                    </button>
+                    <button class="btn-std" onclick="loadMappingType('author')">
+                        Authors
+                    </button>
+                    <button class="btn-std" onclick="loadMappingType('artist')">
+                        Artists
+                    </button>
+                </div>
+
+                <div style="flex: 1; display: flex; flex-direction: row">
+                    <div
+                        style="
+                            flex: 1;
+                            border-right: 1px solid var(--secondary);
+                            padding-right: 10px;
+                            display: flex;
+                            flex-direction: column;
+                        "
+                    >
+                        <h3>Main Entities</h3>
+                        <input
+                            type="text"
+                            id="entitySearch"
+                            placeholder="Filter entities..."
+                            class="edit-input"
+                            oninput="filterEntities()"
+                            style="margin-bottom: 10px"
+                        />
+                        <div
+                            style="display: flex; gap: 5px; margin-bottom: 10px"
+                        >
+                            <input
+                                type="text"
+                                id="newMainEntityInput"
+                                placeholder="Add new custom main..."
+                                class="edit-input"
+                                style="margin: 0; flex: 1"
+                            />
+                            <button
+                                onclick="addMainEntity()"
+                                style="
+                                    background: var(--success);
+                                    border-radius: 4px;
+                                    padding: 0 15px;
+                                "
+                                title="Add new main entity"
+                            >
+                                +
+                            </button>
+                        </div>
+                        <ul
+                            id="mainEntityList"
+                            style="
+                                list-style: none;
+                                padding: 0;
+                                margin: 0;
+                                overflow-y: auto;
+                                flex: 1;
+                                border: 1px solid #334155;
+                                border-radius: 6px;
+                                max-height: 60vh;
+                            "
+                        ></ul>
+                    </div>
+
+                    <div
+                        style="
+                            flex: 1;
+                            padding-left: 10px;
+                            display: flex;
+                            flex-direction: column;
+                        "
+                    >
+                        <h3 id="aliasListHeader">Select a Main Entity</h3>
+
+                        <div
+                            style="
+                                background: #0f172a;
+                                padding: 15px;
+                                border-radius: 6px;
+                                margin-bottom: 15px;
+                            "
+                        >
+                            <label
+                                style="
+                                    font-size: 13px;
+                                    color: var(--secondary);
+                                    display: block;
+                                    margin-bottom: 5px;
+                                "
+                                >Merge an existing tag into this one:</label
+                            >
+                            <div style="display: flex; gap: 5px">
+                                <select
+                                    id="availableTagsDropdown"
+                                    class="edit-input"
+                                    disabled
+                                    style="margin: 0; flex: 1"
+                                ></select>
+                                <button
+                                    id="addAliasBtn"
+                                    onclick="linkAlias()"
+                                    style="background: var(--success)"
+                                    disabled
+                                >
+                                    Link
+                                </button>
+                            </div>
+                        </div>
+
+                        <h4 style="margin: 0 0 10px 0">Current Aliases</h4>
+                        <ul
+                            id="aliasList"
+                            style="
+                                list-style: none;
+                                padding: 0;
+                                margin: 0;
+                                overflow-y: auto;
+                                flex: 1;
+                                border: 1px solid #334155;
+                                border-radius: 6px;
+                                max-height: 60vh;
+                            "
+                        ></ul>
+                    </div>
                 </div>
             </div>
         </div>
@@ -2211,6 +2217,42 @@
                 renderMainEntityList();
                 document.getElementById("aliasList").innerHTML =
                     '<li style="padding: 10px; color:var(--secondary)">Select an entity to view aliases.</li>';
+            };
+
+            window.addMainEntity = async function () {
+                const input = document.getElementById("newMainEntityInput");
+                const name = input.value.trim();
+
+                if (!name) return;
+
+                const btn = event.target;
+                const originalText = btn.innerText;
+                btn.innerText = "⏳";
+                btn.disabled = true;
+
+                try {
+                    const res = await fetch(
+                        `http://localhost:3000/data/mappings/${currentMapType}/main`,
+                        {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ name }),
+                        },
+                    );
+
+                    const data = await res.json();
+                    if (data.success) {
+                        input.value = ""; // Clear the input
+                        await loadMappingType(currentMapType); // Refresh the list
+                    } else {
+                        alert("Failed to add entity: " + data.error);
+                    }
+                } catch (e) {
+                    alert("Connection error: " + e.message);
+                } finally {
+                    btn.innerText = originalText;
+                    btn.disabled = false;
+                }
             };
 
             window.renderMainEntityList = function () {

@@ -436,6 +436,34 @@ app.post("/data/mappings/:type/alias", (req, res) => {
     });
 });
 
+app.post("/data/mappings/:type/main", (req, res) => {
+    const { name } = req.body;
+    if (!name || name.trim() === "") {
+        return res.status(400).json({ error: "Name is required" });
+    }
+
+    const type = req.params.type;
+    const mainTable = type + "s";
+
+    // Title case it to keep your database clean and match your normalization logic
+    const normalizedName = name
+        .trim()
+        .replace(
+            /\w\S*/g,
+            (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase(),
+        );
+
+    const sql =
+        type === "genre"
+            ? `INSERT OR IGNORE INTO ${mainTable} (name, nsfw) VALUES (?, 0)`
+            : `INSERT OR IGNORE INTO ${mainTable} (name) VALUES (?)`;
+
+    db.run(sql, [normalizedName], function (err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ success: true, id: this.lastID, name: normalizedName });
+    });
+});
+
 app.delete("/data/mappings/:type/alias/:name", (req, res) => {
     const mapTable = req.params.type + "_mapping";
     db.run(
@@ -1093,7 +1121,7 @@ app.post("/data/library/cleanup/metadata", (req, res) => {
                     type: row.type,
                     status: row.status,
                     website: row.website,
-                    nsfw: row.nsfw
+                    nsfw: row.nsfw,
                 };
 
                 // 2. Run the existing normalization logic
@@ -1105,11 +1133,18 @@ app.post("/data/library/cleanup/metadata", (req, res) => {
                 await new Promise((resolve, reject) => {
                     db.run(
                         `UPDATE bookmarks SET genres = ?, author = ?, artist = ?, type = ?, nsfw = ? WHERE id = ?`,
-                        [normalized.genres, normalized.author, normalized.artist, normalized.type, normalized.nsfw, row.id],
+                        [
+                            normalized.genres,
+                            normalized.author,
+                            normalized.artist,
+                            normalized.type,
+                            normalized.nsfw,
+                            row.id,
+                        ],
                         (updateErr) => {
                             if (updateErr) reject(updateErr);
                             else resolve();
-                        }
+                        },
                     );
                 });
                 updatedCount++;
