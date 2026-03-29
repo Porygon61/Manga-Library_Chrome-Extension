@@ -43,8 +43,14 @@ async function init() {
     });
 
     try {
-        const configRes = await fetch("http://localhost:3000/data/config");
-        masterConfig = await configRes.json();
+        const localData = await chrome.storage.local.get(["masterConfig"]);
+        if (localData.masterConfig) {
+            masterConfig = localData.masterConfig;
+        } else {
+            // Fallback if background script hasn't cached it yet
+            const configRes = await fetch("http://localhost:3000/data/config");
+            masterConfig = await configRes.json();
+        }
     } catch (err) {
         showStatus("Failed to load config", "error");
         return;
@@ -702,5 +708,28 @@ window.addEventListener("blur", () => {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get("url")) window.close();
 });
+
+document.getElementById("btnRefreshConfig").onclick = async () => {
+    const btn = document.getElementById("btnRefreshConfig");
+    btn.innerText = "Updating...";
+
+    // Force a fresh fetch
+    try {
+        const res = await fetch("http://localhost:3000/data/config");
+        const config = await res.json();
+        const timestamp = res.headers.get("X-Config-Last-Modified");
+
+        await chrome.storage.local.set({
+            masterConfig: config,
+            configTimestamp: timestamp,
+        });
+
+        btn.innerText = "Config Updated!";
+        setTimeout(() => (btn.innerText = "Update Config"), 2000);
+        location.reload(); // Refresh popup data
+    } catch (e) {
+        btn.innerText = "Update Failed";
+    }
+};
 
 document.addEventListener("DOMContentLoaded", init);

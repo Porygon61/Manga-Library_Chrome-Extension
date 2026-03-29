@@ -13,12 +13,6 @@ chrome.runtime.onInstalled.addListener(() => {
     });
 });
 
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-    if (changeInfo.status === "complete") {
-        checkConnection();
-    }
-});
-
 function updateBadge(connected) {
     const text = connected ? "ON" : "OFF";
     const color = connected ? "#4CAF50" : "#F44336";
@@ -29,10 +23,20 @@ function updateBadge(connected) {
 
 async function checkConnection() {
     try {
-        const response = await fetch(SERVER_URL, {
-            method: "GET",
-            cache: "no-store",
-        });
+        const response = await fetch(SERVER_URL, { method: "HEAD" }); // Use HEAD to save data
+        const serverTimestamp = response.headers.get("X-Config-Last-Modified");
+        const storage = await chrome.storage.local.get(["configTimestamp"]);
+
+        // Only fetch if version is different or missing
+        if (response.ok && serverTimestamp !== storage.configTimestamp) {
+            const configRes = await fetch(SERVER_URL);
+            const config = await configRes.json();
+            await chrome.storage.local.set({
+                masterConfig: config,
+                configTimestamp: serverTimestamp,
+            });
+            console.log("Config updated from server.");
+        }
         updateBadge(response.ok);
     } catch (error) {
         updateBadge(false);

@@ -9,6 +9,7 @@ const {
     readFileSync,
     readdir,
     unlinkSync,
+    writeFileSync,
 } = require("fs");
 const path = require("path");
 const crypto = require("crypto");
@@ -19,6 +20,8 @@ const DB_PATH = path.join(__dirname, "manga_db.sqlite");
 const CONFIG_PATH = path.join(__dirname, "config.json");
 const COVERS_DIR = path.join(__dirname, "covers");
 const FAVICONS_DIR = path.join(__dirname, "favicons");
+
+let configLastModified = Date.now();
 
 if (!existsSync(COVERS_DIR)) mkdirSync(COVERS_DIR, { recursive: true });
 if (!existsSync(FAVICONS_DIR)) mkdirSync(FAVICONS_DIR, { recursive: true });
@@ -274,7 +277,7 @@ function sysLog(level, category, action, source, data = null) {
         [level, category, action, source, dataStr],
     );
     console.log(
-        `[${new Date().toLocaleString()}] ${level} [${category}]: ${action}`,
+        `[${new Date().toLocaleString()}] ${level} [${category}]: ${action} (${source})`,
     );
 }
 
@@ -522,21 +525,24 @@ app.get("/proxy-image", async (req, res) => {
 /* END PROXY ENDPOINT */
 
 app.get("/data/config", (req, res) => {
-    if (existsSync(CONFIG_PATH))
-        res.json(JSON.parse(readFileSync(CONFIG_PATH, "utf-8")));
-    else res.status(404).json({ error: "Config not found" });
+    if (!existsSync(CONFIG_PATH))
+        return res.status(404).json({ error: "No config" });
+    const config = JSON.parse(readFileSync(CONFIG_PATH, "utf-8"));
+    res.setHeader("X-Config-Last-Modified", configLastModified);
+    res.json(config);
+});
+
+app.head("/data/config", (req, res) => {
+    res.setHeader("Access-Control-Expose-Headers", "X-Config-Last-Modified");
+    res.setHeader("X-Config-Last-Modified", configLastModified);
+    res.status(200).end();
 });
 
 app.post("/data/config", (req, res) => {
-    try {
-        require("fs").writeFileSync(
-            CONFIG_PATH,
-            JSON.stringify(req.body, null, 2),
-        );
-        res.json({ success: true });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+    const config = req.body;
+    writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
+    configLastModified = Date.now(); // Update timestamp
+    res.json({ success: true });
 });
 
 app.post("/data/library/search", (req, res) => {

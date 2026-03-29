@@ -16,22 +16,21 @@ async function remoteLog(level, category, action, source, data = null) {
     }
 }
 async function initContentScript() {
-    const storage = await chrome.storage.local.get("isConnected");
+    const { isConnected, masterConfig } = await chrome.storage.local.get([
+        "isConnected",
+        "masterConfig",
+    ]);
 
     const oldBtn = document.getElementById("manga-sync-fixed-btn");
     if (oldBtn) oldBtn.remove();
 
-    if (!storage.isConnected) {
-        return;
-    }
+    if (!isConnected || !masterConfig) return;
 
     try {
-        const response = await fetch("http://localhost:3000/data/config");
-        const config = await response.json();
         const domain = window.location.hostname.replace("www.", "");
-        pageConfig = config.websites[domain];
+        pageConfig = masterConfig.websites[domain];
 
-        if (config.settings) globalSettings = config.settings;
+        if (masterConfig.settings) globalSettings = masterConfig.settings;
 
         if (pageConfig) {
             const url = window.location.href;
@@ -101,13 +100,13 @@ async function handleReaderSync() {
 
     // Safety check for empty selector
     if (!selector || selector.trim() === "") {
-        updateBtn(btn, "Config Err", "#e74c3c", "🕮");
+        updateBtn(btn, "Config Err", "#e74c3c", "🕮", true);
         return;
     }
 
     const chEl = document.querySelector(selector);
     if (!chEl) {
-        updateBtn(btn, "Not Found", "#e74c3c", "🕮");
+        updateBtn(btn, "Not Found", "#e74c3c", "🕮", true);
         return;
     }
 
@@ -173,7 +172,7 @@ async function handleReaderSync() {
                 chapter: cleanNum,
             });
         } else {
-            updateBtn(btn, "Not in Lib", "#e67e22", "🕮");
+            updateBtn(btn, "Not in Lib", "#e67e22", "🕮", true);
             remoteLog("WARN", "UI", "READER_SYNC_NOT_FOUND", "content.js", {
                 url: baseUrl,
             });

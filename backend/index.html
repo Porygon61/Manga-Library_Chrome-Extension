@@ -220,7 +220,6 @@
                 max-height: 85vh;
                 overflow: hidden;
                 display: flex;
-                
             }
 
             /* Toggle Switch Styling */
@@ -1124,12 +1123,43 @@
             }
 
             async function fetchData() {
-                // Fetch config for settings logic
                 try {
-                    const configRes = await fetch(
+                    const headRes = await fetch(
                         "http://localhost:3000/data/config",
+                        { method: "HEAD" },
                     );
-                    masterConfig = await configRes.json();
+                    const serverTimestamp = headRes.headers.get(
+                        "X-Config-Last-Modified",
+                    );
+                    const localTimestamp =
+                        localStorage.getItem("configTimestamp");
+
+                    if (headRes.ok && serverTimestamp !== localTimestamp) {
+                        const configRes = await fetch(
+                            "http://localhost:3000/data/config",
+                        );
+                        masterConfig = await configRes.json();
+                        localStorage.setItem(
+                            "configTimestamp",
+                            serverTimestamp,
+                        );
+                        localStorage.setItem(
+                            "masterConfig",
+                            JSON.stringify(masterConfig),
+                        );
+                        console.log("Dashboard config updated from server.");
+                    } else {
+                        const cachedConfig =
+                            localStorage.getItem("masterConfig");
+                        if (cachedConfig) {
+                            masterConfig = JSON.parse(cachedConfig);
+                        } else {
+                            const configRes = await fetch(
+                                "http://localhost:3000/data/config",
+                            );
+                            masterConfig = await configRes.json();
+                        }
+                    }
 
                     if (masterConfig.settings) {
                         const progToggle = document.getElementById(
