@@ -596,7 +596,11 @@
                 <option value="title_asc">Title (A-Z)</option>
                 <option value="title_desc">Title (Z-A)</option>
                 <option value="rating_desc">Rating (High to Low)</option>
+                <option value="rating_asc">Rating (Low to High)</option>
                 <option value="year_desc">Release Year (Newest)</option>
+                <option value="year_asc">Release Year (Oldest)</option>
+                <option value="chapters_desc">Chapters (Most to Fewest)</option>
+                <option value="chapters_asc">Chapters (Fewest to Most)</option>
             </select>
 
             <button
@@ -1546,6 +1550,7 @@
                 filtered.sort((a, b) => {
                     if (sort === "updated_desc")
                         return new Date(b.timestamp) - new Date(a.timestamp);
+                    if (sort === "id_desc") return b.id - a.id;
                     if (sort === "title_asc")
                         return (a.title || "")
                             .toLowerCase()
@@ -1559,12 +1564,31 @@
                             parseFloat(b.rating || 0) -
                             parseFloat(a.rating || 0)
                         );
+                    if (sort === "rating_asc")
+                        return (
+                            parseFloat(a.rating || 0) -
+                            parseFloat(b.rating || 0)
+                        );
                     if (sort === "year_desc")
                         return (
                             parseInt(b.release_year || 0) -
                             parseInt(a.release_year || 0)
                         );
-                    if (sort === "id_desc") return b.id - a.id;
+                    if (sort === "year_asc")
+                        return (
+                            parseInt(a.release_year || 0) -
+                            parseInt(b.release_year || 0)
+                        );
+                    if (sort === "chapters_desc")
+                        return (
+                            parseFloat(b.current_chapter || 0) -
+                            parseFloat(a.current_chapter || 0)
+                        );
+                    if (sort === "chapters_asc")
+                        return (
+                            parseFloat(a.current_chapter || 0) -
+                            parseFloat(b.current_chapter || 0)
+                        );
                     return 0;
                 });
 
@@ -2295,7 +2319,7 @@
                     .filter((m) => m.name.toLowerCase().includes(filterText))
                     .map(
                         (m) => `
-                        <li style="padding: 10px; cursor: pointer; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; background: ${currentSelectedMain === m.id ? "#334155" : "transparent"};" 
+                        <li style="padding: 10px; cursor: pointer; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; background: ${currentSelectedMain === m.id ? "#334155" : "transparent"};"
                             onclick="selectMainEntity(${m.id})">
                             <span style="font-weight: ${currentSelectedMain === m.id ? "bold" : "normal"}; color: ${currentSelectedMain === m.id ? "var(--accent)" : "var(--text)"};">${escapeHtml(m.name)}</span>
                             ${

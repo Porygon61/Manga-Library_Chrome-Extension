@@ -111,7 +111,7 @@
           "type": "array",
           "split_by": "•"
         },
-        "latest_chapter": "a:nth-of-type(1) span.text-white.font-medium",
+        "latest_chapter": "a:nth-of-type(1) .gap-2 span",
         "latest_chapter_update_date": "a:nth-of-type(1) .flex-shrink-0 span",
         "rating": "span.bg-gradient-to-r.font-bold.text-xl",
         "cover_image": {
