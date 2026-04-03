@@ -333,7 +333,7 @@ async function downloadCover(url) {
 
     const headers = {
         "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",
         Referer: new URL(url).origin + "/",
         Accept: "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.9",
@@ -497,7 +497,7 @@ app.get("/proxy-image", async (req, res) => {
 
         const headers = {
             "User-Agent":
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",
             Referer: origin,
             Accept: "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
             "Accept-Language": "en-US,en;q=0.9",
@@ -520,6 +520,46 @@ app.get("/proxy-image", async (req, res) => {
     } catch (error) {
         console.error(`❌ Proxy crash for [${imageUrl}]:`, error.message);
         res.status(404).send("Image could not be proxied");
+    }
+});
+
+/* HTML PROXY ENDPOINT FOR UPDATES */
+app.get("/proxy-html", async (req, res) => {
+    const targetUrl = req.query.url;
+    if (!targetUrl || targetUrl === "undefined" || targetUrl === "null") {
+        return res.status(400).send("No valid URL provided");
+    }
+
+    try {
+        let origin = "https://google.com";
+        try {
+            origin = new URL(targetUrl).origin + "/";
+        } catch (e) {}
+
+        const headers = {
+            "User-Agent":
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",
+            Referer: origin,
+            Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
+        };
+
+        const response = await axios({
+            url: targetUrl,
+            method: "GET",
+            timeout: 15000,
+            headers: headers,
+            validateStatus: false,
+        });
+
+        if (response.headers["content-type"]) {
+            res.setHeader("Content-Type", response.headers["content-type"]);
+        }
+
+        res.send(response.data);
+    } catch (error) {
+        console.error(`❌ Proxy HTML crash for [${targetUrl}]:`, error.message);
+        res.status(404).send("HTML could not be proxied");
     }
 });
 /* END PROXY ENDPOINT */
@@ -940,6 +980,12 @@ app.patch("/data/library/entry", (req, res) => {
 
     const performUpdate = (bookmarkId, res) => {
         if (updates) {
+            if (updates.latest_chapter_update_date) {
+                updates.latest_chapter_update_date = normalizeDate(
+                    updates.latest_chapter_update_date,
+                );
+            }
+
             const keys = Object.keys(updates);
             if (keys.length === 0) return res.json({ success: true });
 

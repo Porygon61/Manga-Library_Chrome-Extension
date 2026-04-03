@@ -1620,8 +1620,9 @@
                                                 (g) =>
                                                     `<span class="tag">${escapeHtml(g)}</span>`,
                                             )
-                                            .join("")}</div>
+                                            .join("")}
                                     </div>
+                                    <button class="btn-update" onclick="checkUpdates(event, ${m.id})" title="Check for Updates" style="position: absolute; bottom: 10px; right: 10px; background: var(--success); color: white; border: none; border-radius: 50%; width: 28px; height: 28px; font-size: 14px; display: flex; justify-content: center; align-items: center; cursor: pointer; z-index: 10; padding: 0; box-shadow: 0 2px 5px rgba(0,0,0,0.3); transition: transform 0.2s;">↻</button></div>
                                 </div>`;
                     })
                     .join("");
@@ -1913,9 +1914,14 @@
                                     <p><strong>Timestamp:</strong> ${escapeHtml(m.timestamp) || "Unknown"}</p>
 
                                     <div style="margin-top: 20px; display: flex; gap: 15px; align-items: center;">
-                                        <label style="color:var(--danger); font-weight:bold; cursor:pointer; background: #334155; padding: 8px 12px; border-radius: 6px; display: inline-flex; align-items: center; gap: 8px; user-select: none;">
-                                            <input type="checkbox" ${isNsfw ? "checked" : ""} onchange="toggleNsfw(this.checked, ${m.id})"> Mark as NSFW
+                                        <label style="color: var(--danger); font-weight: bold; cursor: pointer; background: #334155; padding: 8px 12px; border-radius: 6px; display: inline-flex; align-items: center; gap: 8px; user-select: none;">
+                                            <input type="checkbox" ${isNsfw ? "checked" : ""} onchange="toggleNsfw(this.checked, ${m.id})">
+                                            <span>Mark as NSFW</span>
                                         </label>
+                                        <button onclick="checkUpdates(event, ${m.id})" style="background: var(--success); color: white; border: none; padding: 8px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; user-select: none;">
+                                            <span>↻</span>
+                                            <span>Check for Updates</span>
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -2433,6 +2439,297 @@
                 );
                 await loadMappingType(currentMapType);
                 selectMainEntity(currentSelectedMain);
+            };
+
+            window.extractField = function (doc, siteConfig, field) {
+                const selRaw = siteConfig.selectors[field];
+                if (!selRaw) return null;
+                let query = typeof selRaw === "object" ? selRaw.query : selRaw;
+                let takeFirst =
+                    typeof selRaw === "object" ? selRaw.take_first : false;
+                if (!query || typeof query !== "string") return null;
+
+                let elements = [];
+                try {
+                    if (query.startsWith("xpath:")) {
+                        const xpath = query.replace("xpath:", "").trim();
+                        const snapshot = document.evaluate(
+                            xpath,
+                            doc,
+                            null,
+                            XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
+                            null,
+                        );
+                        for (let i = 0; i < snapshot.snapshotLength; i++)
+                            elements.push(snapshot.snapshotItem(i));
+                    } else {
+                        elements = Array.from(doc.querySelectorAll(query));
+                    }
+                } catch (e) {
+                    return null;
+                }
+
+                if (elements.length === 0) return null;
+
+                let extracted = elements
+                    .map((el) => {
+                        const clone = el.cloneNode(true);
+                        const exSelector =
+                            siteConfig.selector_exclusions?.[field];
+                        if (exSelector)
+                            clone
+                                .querySelectorAll(exSelector)
+                                .forEach((ex) => ex.remove());
+
+                        let finalText = "";
+                        const textNodes = Array.from(clone.childNodes).filter(
+                            (node) =>
+                                node.nodeType === 3 &&
+                                node.textContent.trim().length > 0,
+                        );
+                        if (textNodes.length > 0) {
+                            finalText = textNodes
+                                .map((node) => node.textContent.trim())
+                                .join(" ");
+                        } else {
+                            finalText = clone.textContent
+                                .replace(/\s\s+/g, " ")
+                                .trim();
+                        }
+
+                        const replacements =
+                            siteConfig.string_replacements?.[field];
+                        if (replacements && Array.isArray(replacements)) {
+                            replacements.forEach((str) => {
+                                let regex;
+                                if (
+                                    str.startsWith("/") &&
+                                    str.match(/\/[gimsuy]*$/)
+                                ) {
+                                    const lastSlash = str.lastIndexOf("/");
+                                    const pattern = str.substring(1, lastSlash);
+                                    const flags = str.substring(lastSlash + 1);
+                                    regex = new RegExp(pattern, flags);
+                                } else {
+                                    const escapedStr = str.replace(
+                                        /[.*+?^${}()|[\]\\]/g,
+                                        "\\$&",
+                                    );
+                                    regex = new RegExp(escapedStr, "gi");
+                                }
+                                finalText = finalText.replace(regex, "");
+                            });
+                        }
+                        return finalText.trim();
+                    })
+                    .filter((v) => v !== "");
+
+                if (takeFirst && extracted.length > 0)
+                    extracted = [extracted[0]];
+                return extracted[0] || null;
+            };
+
+            window.checkUpdates = async function (event, id) {
+                if (event) event.stopPropagation();
+
+                const m = libraryData.find((x) => x.id === id);
+                if (!m) return;
+
+                let mappings = [];
+                try {
+                    mappings = JSON.parse(m.mappings || "[]");
+                } catch (e) {}
+                if (mappings.length === 0) {
+                    alert("No linked URLs to check.");
+                    return;
+                }
+
+                const btn = event ? event.currentTarget : null;
+                let originalHtml = "";
+                if (btn) {
+                    originalHtml = btn.innerHTML;
+                    btn.disabled = true;
+                }
+
+                // Check if we are in Grid View to apply the card overlay
+                const card = document.getElementById(`card-${id}`);
+                const isGridView =
+                    document.getElementById("mangaGrid").style.display !==
+                    "none";
+                let overlay = null;
+
+                if (isGridView && card) {
+                    overlay = document.createElement("div");
+                    overlay.style.cssText = `
+                        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+                        background: rgba(15, 23, 42, 0.9);
+                        display: flex; flex-direction: column; justify-content: center; align-items: center;
+                        z-index: 20; backdrop-filter: blur(3px); text-align: center; padding: 15px;
+                        box-sizing: border-box; animation: fadeIn 0.2s ease;
+                    `;
+                    overlay.innerHTML = `
+                        <span style="font-size: 36px; margin-bottom: 12px;">⏳</span>
+                        <span style="font-weight: bold; color: white; font-size: 16px;">Scanning sources...</span>
+                    `;
+                    card.appendChild(overlay);
+                } else if (btn) {
+                    // Fallback for Detail View
+                    btn.innerHTML = "⏳ Scanning...";
+                }
+
+                let highestNum = parseFloat(
+                    String(m.latest_chapter || "0").replace(/[^\d.]/g, ""),
+                );
+                let highestText = m.latest_chapter;
+                let updateDate = m.latest_chapter_update_date;
+
+                let foundNew = false;
+                let blockedCount = 0;
+                let validLinks = 0;
+
+                for (const mapping of mappings) {
+                    if (!mapping.url) continue;
+                    validLinks++;
+
+                    try {
+                        let domain = new URL(mapping.url).hostname.replace(
+                            "www.",
+                            "",
+                        );
+                        let siteConfig = masterConfig.websites[domain];
+                        if (!siteConfig) continue;
+
+                        const res = await fetch(
+                            "http://localhost:3000/proxy-html?url=" +
+                                encodeURIComponent(mapping.url),
+                        );
+                        if (!res.ok) {
+                            blockedCount++;
+                            continue;
+                        }
+
+                        const html = await res.text();
+                        const doc = new DOMParser().parseFromString(
+                            html,
+                            "text/html",
+                        );
+
+                        const pageTitle = doc.title.toLowerCase();
+                        if (
+                            pageTitle.includes("just a moment") ||
+                            pageTitle.includes("cloudflare") ||
+                            pageTitle.includes("attention required") ||
+                            html.includes("cf-browser-verification")
+                        ) {
+                            console.warn(
+                                `[Blocked] Anti-bot screen detected for: ${mapping.url}`,
+                            );
+                            blockedCount++;
+                            continue;
+                        }
+
+                        const chTextRaw = window.extractField(
+                            doc,
+                            siteConfig,
+                            "latest_chapter",
+                        );
+                        const dateText = window.extractField(
+                            doc,
+                            siteConfig,
+                            "latest_chapter_update_date",
+                        );
+
+                        if (chTextRaw) {
+                            const chText = chTextRaw.trim();
+                            const chNum = parseFloat(
+                                String(chText).replace(/[^\d.]/g, ""),
+                            );
+
+                            if (!isNaN(chNum)) {
+                                if (isNaN(highestNum) || chNum > highestNum) {
+                                    highestNum = chNum;
+                                    highestText = chText;
+                                    updateDate = dateText || updateDate;
+                                    foundNew = true;
+                                }
+                            } else {
+                                if (
+                                    chText !== highestText &&
+                                    (isNaN(highestNum) || highestNum === 0)
+                                ) {
+                                    highestText = chText;
+                                    updateDate = dateText || updateDate;
+                                    foundNew = true;
+                                }
+                            }
+                        } else {
+                            blockedCount++;
+                        }
+                    } catch (e) {
+                        console.error(
+                            "Update check failed for",
+                            mapping.url,
+                            e,
+                        );
+                        blockedCount++;
+                    }
+                }
+
+                // Determine final status
+                let resultIcon = "";
+                let resultText = "";
+                let resultColor = "";
+
+                if (foundNew) {
+                    resultIcon = "✅";
+                    resultText = "New Chapter Found!";
+                    resultColor = "var(--success)";
+
+                    const updates = { latest_chapter: highestText };
+                    if (updateDate)
+                        updates.latest_chapter_update_date = updateDate;
+
+                    await fetch("http://localhost:3000/data/library/entry", {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ id: m.id, updates }),
+                    });
+
+                    m.latest_chapter = highestText;
+                    if (updateDate) m.latest_chapter_update_date = updateDate;
+                } else if (blockedCount >= validLinks) {
+                    resultIcon = "🛡️";
+                    resultText = "Blocked by Site";
+                    resultColor = "var(--warning)";
+                } else {
+                    resultIcon = "✓";
+                    resultText = "Up to Date";
+                    resultColor = "white";
+                }
+
+                // Apply visual results
+                if (overlay) {
+                    overlay.innerHTML = `
+                        <span style="font-size: 36px; margin-bottom: 12px;">${resultIcon}</span>
+                        <span style="font-weight: bold; color: ${resultColor}; font-size: 16px;">${resultText}</span>
+                    `;
+                } else if (btn) {
+                    btn.innerHTML = `${resultIcon} ${resultText}`;
+                }
+
+                // Reset after 2.5 seconds (gives them slightly longer to read the text)
+                setTimeout(() => {
+                    if (overlay) overlay.remove();
+                    if (btn) {
+                        btn.innerHTML = originalHtml;
+                        btn.disabled = false;
+                    }
+                    if (foundNew) {
+                        renderData();
+                        if (currentViewedManga && currentViewedManga.id === id)
+                            openDetail(id);
+                    }
+                }, 2500);
             };
 
             init();
