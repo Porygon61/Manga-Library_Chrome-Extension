@@ -158,7 +158,7 @@ async function normalizeEntryData(entry) {
                 (m) => m.alias.toLowerCase() === lowerItem,
             );
             if (matchedAlias) {
-                if (matchedAlias.main.toUpperCase() === "IGNORE") {
+                if (matchedAlias.main.toUpperCase() === "1. IGNORE") {
                     continue;
                 }
                 result.push(matchedAlias.main);
@@ -208,6 +208,33 @@ async function normalizeEntryData(entry) {
 
     if (entry.status) entry.status = toTitleCase(entry.status.trim());
     if (entry.website) entry.website = entry.website.toLowerCase().trim();
+
+    // Sanitize alt_title to remove "None", "N/A", or empty strings
+    if (entry.alt_title) {
+        let parsedAlt = [];
+        try {
+            parsedAlt = Array.isArray(entry.alt_title)
+                ? entry.alt_title
+                : JSON.parse(entry.alt_title);
+        } catch (e) {
+            // Fallback if it's a raw string
+            parsedAlt =
+                typeof entry.alt_title === "string"
+                    ? entry.alt_title.split(",").map((s) => s.trim())
+                    : [entry.alt_title];
+        }
+
+        // Filter out unwanted values
+        parsedAlt = parsedAlt.filter(
+            (t) =>
+                t &&
+                t.toLowerCase() !== "none" &&
+                t.toLowerCase() !== "n/a" &&
+                t.toLowerCase() !== "null",
+        );
+
+        entry.alt_title = JSON.stringify([...new Set(parsedAlt)]);
+    }
 
     return entry;
 }

@@ -2,7 +2,9 @@
 <html lang="en">
     <head>
         <meta charset="UTF-8" />
-        <title>Manga Library - Data Manager</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link rel="icon" href="/covers/logo.png" type="image/x-icon" />
+        <title>Manga Library</title>
         <style>
             :root {
                 --bg: #0f172a;
@@ -379,6 +381,27 @@
                 right: 60px;
             }
 
+            .badge-websites {
+                position: absolute;
+                top: 40px; /* Positioned just below the checkbox */
+                left: 10px;
+                display: flex;
+                flex-direction: column; /* Stack icons vertically on the left */
+                gap: 5px;
+                z-index: 10;
+                background: rgba(15, 23, 42, 0.8);
+                padding: 5px;
+                border-radius: 6px;
+                backdrop-filter: blur(2px);
+                border: 1px solid var(--secondary);
+            }
+            .badge-websites img.site-icon {
+                width: 16px;
+                height: 16px;
+                border-radius: 3px;
+                display: block;
+            }
+
             .tag {
                 display: inline-block;
                 background: #334155;
@@ -601,6 +624,10 @@
                 <option value="year_asc">Release Year (Oldest)</option>
                 <option value="chapters_desc">Chapters (Most to Fewest)</option>
                 <option value="chapters_asc">Chapters (Fewest to Most)</option>
+                <option value="completion_desc">
+                    Completion (High to Low)
+                </option>
+                <option value="completion_asc">Completion (Low to High)</option>
             </select>
 
             <button
@@ -1589,6 +1616,31 @@
                             parseFloat(a.current_chapter || 0) -
                             parseFloat(b.current_chapter || 0)
                         );
+                    const getCompletion = (manga) => {
+                        // Strip out any non-numeric/non-decimal characters (e.g., "Ch. 15.5" -> 15.5)
+                        const cur = parseFloat(
+                            String(manga.current_chapter || "0").replace(
+                                /[^\d.]/g,
+                                "",
+                            ),
+                        );
+                        const latest = parseFloat(
+                            String(manga.latest_chapter || "0").replace(
+                                /[^\d.]/g,
+                                "",
+                            ),
+                        );
+
+                        // If data is broken, missing, or latest is 0, default to 0%
+                        if (isNaN(cur) || isNaN(latest) || latest === 0)
+                            return 0;
+
+                        return (cur / latest) * 100;
+                    };
+                    if (sort === "completion_desc")
+                        return getCompletion(b) - getCompletion(a);
+                    if (sort === "completion_asc")
+                        return getCompletion(a) - getCompletion(b);
                     return 0;
                 });
 
@@ -1603,9 +1655,56 @@
                         const isNsfw =
                             m.nsfw == 1 || m.nsfw === "1" || m.nsfw === "true";
                         const isSelected = selectedIds.has(m.id);
+
+                        let siteIconsHtml = "";
+                        try {
+                            if (m.mappings) {
+                                const mappings = JSON.parse(m.mappings);
+                                const uniqueIcons = [];
+                                const uniqueLinks = [];
+                                mappings.forEach((mapping) => {
+                                    if (!mapping.url) return;
+                                    let faviconUrl = "";
+                                    try {
+                                        const webData = JSON.parse(
+                                            mapping.website,
+                                        );
+                                        faviconUrl = webData.favicon || "";
+                                    } catch (e) {}
+
+                                    if (
+                                        faviconUrl &&
+                                        !uniqueIcons.includes(faviconUrl)
+                                    ) {
+                                        uniqueIcons.push(faviconUrl);
+                                    }
+
+                                    if (
+                                        mapping.url &&
+                                        !uniqueLinks.includes(mapping.url)
+                                    ) {
+                                        uniqueLinks.push(mapping.url);
+                                    }
+                                });
+
+                                if (uniqueIcons.length > 0) {
+                                    siteIconsHtml =
+                                        `<div class="badge-websites">` +
+                                        uniqueIcons
+                                            .map(
+                                                (icon) =>
+                                                    `<a href="${escapeHtml(uniqueLinks[uniqueIcons.indexOf(icon)])}" target="_blank" onclick="event.stopPropagation()" class="site-icon-link" title="Open on ${escapeHtml(icon).replace("/favicons/", "").replace(".png", "")}"><img src="http://localhost:3000${escapeHtml(icon)}" class="site-icon"></a>`,
+                                            )
+                                            .join("") +
+                                        `</div>`;
+                                }
+                            }
+                        } catch (e) {}
+
                         return `
                                 <div id="card-${m.id}" class="card ${isSelected ? "selected" : ""}" onclick="handleCardClick(event, ${m.id})">
                                     <input type="checkbox" id="check-${m.id}" class="card-checkbox" ${isSelected ? "checked" : ""} onclick="toggleSelect(event, ${m.id})">
+                                    ${siteIconsHtml}
                                     ${isNsfw ? '<div class="badge badge-nsfw">NSFW</div>' : ""}
                                     ${m.type ? `<div class="badge badge-type">${escapeHtml(m.type)}</div>` : ""}
                                     <img src="${escapeHtml(m.cover_image)}" class="card-img" onerror="this.src='http://localhost:3000/covers/placeholder.jpg';">
