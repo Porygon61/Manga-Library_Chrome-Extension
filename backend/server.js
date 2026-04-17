@@ -1421,6 +1421,36 @@ app.post("/data/pending/resolve", async (req, res) => {
                             .status(500)
                             .json({ error: "Bookmark not found" });
                     let newVal = proposedVal;
+
+                    const finishUpdate = () => {
+                        let valToSave = Array.isArray(newVal)
+                            ? JSON.stringify(newVal)
+                            : newVal;
+                        db.run(
+                            `UPDATE bookmarks SET "${field}" = ? WHERE id = ?`,
+                            [valToSave, pendingRow.bookmark_id],
+                            (err) => {
+                                if (err)
+                                    return res
+                                        .status(500)
+                                        .json({ error: err.message });
+                                delete proposed[field];
+                                if (Object.keys(proposed).length === 0)
+                                    db.run(
+                                        `DELETE FROM pending_updates WHERE id = ?`,
+                                        [updateId],
+                                        () => res.json({ success: true }),
+                                    );
+                                else
+                                    db.run(
+                                        `UPDATE pending_updates SET proposed_data = ? WHERE id = ?`,
+                                        [JSON.stringify(proposed), updateId],
+                                        () => res.json({ success: true }),
+                                    );
+                            },
+                        );
+                    };
+
                     if (action === "merge" && Array.isArray(proposedVal)) {
                         let existingArr = [];
                         try {
@@ -1431,39 +1461,50 @@ app.post("/data/pending/resolve", async (req, res) => {
                                 : [];
                         }
                         newVal = [...new Set([...existingArr, ...proposedVal])];
+                        finishUpdate();
                     } else if (
                         action === "replace" &&
                         field === "cover_image"
                     ) {
                         newVal = await downloadCover(proposedVal);
+                        finishUpdate();
+                    } else if (action === "replace" && field === "title") {
+                        const oldTitle = bookmark.title;
+                        // If we are replacing the title, save the old one to alt_titles
+                        if (oldTitle && oldTitle !== proposedVal) {
+                            let existingAlt = [];
+                            try {
+                                existingAlt = JSON.parse(
+                                    bookmark.alt_title || "[]",
+                                );
+                            } catch (e) {
+                                existingAlt = bookmark.alt_title
+                                    ? [bookmark.alt_title]
+                                    : [];
+                            }
+                            if (!existingAlt.includes(oldTitle)) {
+                                existingAlt.push(oldTitle);
+                                db.run(
+                                    `UPDATE bookmarks SET alt_title = ? WHERE id = ?`,
+                                    [
+                                        JSON.stringify(existingAlt),
+                                        pendingRow.bookmark_id,
+                                    ],
+                                    (err) => {
+                                        if (err)
+                                            return res
+                                                .status(500)
+                                                .json({ error: err.message });
+                                        finishUpdate();
+                                    },
+                                );
+                                return; // Exit early to wait for the callback
+                            }
+                        }
+                        finishUpdate();
+                    } else {
+                        finishUpdate();
                     }
-
-                    let valToSave = Array.isArray(newVal)
-                        ? JSON.stringify(newVal)
-                        : newVal;
-                    db.run(
-                        `UPDATE bookmarks SET "${field}" = ? WHERE id = ?`,
-                        [valToSave, pendingRow.bookmark_id],
-                        (err) => {
-                            if (err)
-                                return res
-                                    .status(500)
-                                    .json({ error: err.message });
-                            delete proposed[field];
-                            if (Object.keys(proposed).length === 0)
-                                db.run(
-                                    `DELETE FROM pending_updates WHERE id = ?`,
-                                    [updateId],
-                                    () => res.json({ success: true }),
-                                );
-                            else
-                                db.run(
-                                    `UPDATE pending_updates SET proposed_data = ? WHERE id = ?`,
-                                    [JSON.stringify(proposed), updateId],
-                                    () => res.json({ success: true }),
-                                );
-                        },
-                    );
                 },
             );
         },
