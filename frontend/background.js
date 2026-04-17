@@ -112,7 +112,14 @@ async function handleBackgroundSync(tabUrl, tabId) {
             let cleanBase = siteConfig.url_base.replace("www.", "");
             if (cleanUrl.includes(cleanBase)) {
                 const pathAfterBase = cleanUrl.replace(cleanBase, "");
-                const mangaSlug = pathAfterBase.split("/")[0];
+                let mangaSlug = pathAfterBase.split("/")[0];
+
+                // Strip volatile hex codes from the slug
+                if (siteConfig.slug_cleaner) {
+                    const regex = new RegExp(siteConfig.slug_cleaner, "i");
+                    mangaSlug = mangaSlug.replace(regex, "");
+                }
+
                 mangaIdUrl = siteConfig.url_base + mangaSlug + "/";
             }
         }

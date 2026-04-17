@@ -577,12 +577,20 @@ async function getMangaIdFromUrl(url, siteConfig, tabId = null) {
     }
 
     // Apply formatting to whatever URL we ended up with
+    // Apply formatting to whatever URL we ended up with
     if (siteConfig.url_base) {
         let cleanUrl = resultUrl.replace("www.", "");
         let cleanBase = siteConfig.url_base.replace("www.", "");
         if (cleanUrl.includes(cleanBase)) {
             let pathAfterBase = cleanUrl.replace(cleanBase, "");
             let mangaSlug = pathAfterBase.split("/")[0];
+
+            // Strip volatile hex codes from the slug 
+            if (siteConfig.slug_cleaner) {
+                const regex = new RegExp(siteConfig.slug_cleaner, "i");
+                mangaSlug = mangaSlug.replace(regex, "");
+            }
+
             return siteConfig.url_base + mangaSlug + "/";
         }
     }

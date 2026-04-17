@@ -93,6 +93,7 @@
     "asurascans.com": {
       "name": "AsuraScans",
       "url_base": "https://asurascans.com/comics/",
+      "slug_cleaner": "-[a-f0-9]{8}$",
       "manga_url_selector": "",
       "selectors": {
         "author": {
@@ -111,7 +112,10 @@
           "type": "array",
           "split_by": "•"
         },
-        "latest_chapter": "a:nth-of-type(1) .gap-2 span",
+        "latest_chapter": {
+          "query": "a:nth-of-type(1) .gap-2 span",
+          "take_first": true
+        },
         "latest_chapter_update_date": "a:nth-of-type(1) .flex-shrink-0 span",
         "rating": "span.bg-gradient-to-r.font-bold.text-xl",
         "cover_image": {

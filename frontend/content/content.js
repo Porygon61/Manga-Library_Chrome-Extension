@@ -147,13 +147,20 @@ async function handleReaderSync() {
             }
         }
 
-        // 2. ALWAYS apply url_base formatting if it exists, regardless of where baseUrl came from
+        // 2. ALWAYS apply url_base formatting if it exists
         if (pageConfig.url_base) {
             let cleanUrl = baseUrl.replace("www.", "");
             let cleanBase = pageConfig.url_base.replace("www.", "");
             if (cleanUrl.includes(cleanBase)) {
                 const pathAfterBase = cleanUrl.replace(cleanBase, "");
-                const mangaSlug = pathAfterBase.split("/")[0];
+                let mangaSlug = pathAfterBase.split("/")[0];
+
+                // Strip volatile hex codes from the slug
+                if (pageConfig.slug_cleaner) {
+                    const regex = new RegExp(pageConfig.slug_cleaner, "i");
+                    mangaSlug = mangaSlug.replace(regex, "");
+                }
+
                 baseUrl = pageConfig.url_base + mangaSlug + "/";
             }
         }
