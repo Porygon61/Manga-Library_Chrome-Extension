@@ -210,6 +210,10 @@ new MutationObserver(() => {
     const url = location.href;
     if (url !== lastUrl) {
         lastUrl = url;
+        
+        const oldBtn = document.getElementById("manga-sync-fixed-btn");
+        if (oldBtn) oldBtn.remove();
+        
         setTimeout(initContentScript, 1000);
     }
 }).observe(document, { subtree: true, childList: true });
