@@ -15,14 +15,82 @@ async function remoteLog(level, category, action, source, data = null) {
         console.error("Remote logging failed:", e);
     }
 }
+
+async function getBaseUrl() {
+    let baseUrl = window.location.href;
+    const isInfoPage = new RegExp(pageConfig.site_structure.info_page).test(
+        baseUrl,
+    );
+
+    // 1. Try to fetch from DOM using manga_url_selector
+    if (pageConfig.manga_url_selector && !isInfoPage) {
+        const linkEl = document.querySelector(pageConfig.manga_url_selector);
+        if (linkEl && linkEl.href) {
+            baseUrl = linkEl.href;
+        }
+    }
+
+    // 2. ALWAYS apply url_base formatting if it exists
+    if (pageConfig.url_base) {
+        let cleanUrl = baseUrl.replace("www.", "");
+        let cleanBase = pageConfig.url_base.replace("www.", "");
+        if (cleanUrl.includes(cleanBase)) {
+            const pathAfterBase = cleanUrl.replace(cleanBase, "");
+            let mangaSlug = pathAfterBase.split("/")[0];
+
+            // Strip volatile hex codes from the slug
+            if (pageConfig.slug_cleaner) {
+                const regex = new RegExp(pageConfig.slug_cleaner, "i");
+                mangaSlug = mangaSlug.replace(regex, "");
+            }
+
+            baseUrl = pageConfig.url_base + mangaSlug + "/";
+        }
+    }
+    return baseUrl;
+}
+
+function getScrapedChapter() {
+    const selector = pageConfig.selectors?.read_chapter_num;
+    if (!selector || selector.trim() === "") return null;
+
+    const chEl = document.querySelector(selector);
+    if (!chEl) return null;
+
+    let cleanNum = chEl.innerText;
+    const replacements = pageConfig.string_replacements?.read_chapter_num;
+    if (replacements && Array.isArray(replacements)) {
+        replacements.forEach((str) => {
+            let regex;
+            if (str.startsWith("/") && str.match(/\/[gimsuy]*$/)) {
+                const lastSlash = str.lastIndexOf("/");
+                regex = new RegExp(
+                    str.substring(1, lastSlash),
+                    str.substring(lastSlash + 1),
+                );
+            } else {
+                const escapedStr = str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+                regex = new RegExp(escapedStr, "gi");
+            }
+            cleanNum = cleanNum.replace(regex, "");
+        });
+    }
+    return cleanNum.replace(/[^0-9.]/g, "").trim();
+}
+
 async function initContentScript() {
     const { isConnected, masterConfig } = await chrome.storage.local.get([
         "isConnected",
         "masterConfig",
     ]);
 
+    const oldContainer = document.getElementById(
+        "manga-sync-fixed-btn-container",
+    );
+    if (oldContainer) oldContainer.remove();
+
     const oldBtn = document.getElementById("manga-sync-fixed-btn");
-    if (oldBtn) oldBtn.remove();
+    if (oldBtn) oldBtn.remove(); // Cleanup stray buttons just in case
 
     if (!isConnected || !masterConfig) return;
 
@@ -42,7 +110,32 @@ async function initContentScript() {
             );
 
             if (isReader && globalSettings.enableProgressSyncBtn) {
-                injectButton("🕮", "Sync Progress", handleReaderSync);
+                const baseUrl = await getBaseUrl();
+                const scrapedChapter = getScrapedChapter() || "?";
+                let savedChapter = "?";
+
+                try {
+                    const res = await fetch(
+                        "http://localhost:3000/data/library/search",
+                        {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ url: baseUrl }),
+                        },
+                    );
+                    const entry = await res.json();
+                    if (entry && entry.current_chapter) {
+                        savedChapter = entry.current_chapter;
+                    }
+                } catch (e) {}
+
+                injectButton(
+                    "🕮",
+                    "Sync Progress",
+                    handleReaderSync,
+                    savedChapter,
+                    scrapedChapter,
+                );
             } else if (isInfo && globalSettings.enableAddNewMangaBtn) {
                 injectButton("+", "Quick Add/Sync", () => {
                     const btn = document.getElementById("manga-sync-fixed-btn");
@@ -65,16 +158,50 @@ async function initContentScript() {
     }
 }
 
-function injectButton(icon, title, clickHandler) {
+function injectButton(icon, title, clickHandler, saved = null, scraped = null) {
+    const container = document.createElement("div");
+    container.id = "manga-sync-fixed-btn-container";
+    Object.assign(container.style, {
+        position: "fixed",
+        top: "20px",
+        right: "20px",
+        zIndex: "2147483647",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "flex-end",
+        gap: "6px",
+    });
+
+    if (saved !== null && scraped !== null) {
+        const infoDisplay = document.createElement("div");
+        Object.assign(infoDisplay.style, {
+            background: "rgba(44, 62, 80, 0.95)",
+            color: "#ecf0f1",
+            padding: "6px 10px",
+            borderRadius: "6px",
+            fontSize: "12px",
+            fontFamily: "Arial, sans-serif",
+            backdropFilter: "blur(4px)",
+            border: "1px solid #34495e",
+            whiteSpace: "nowrap",
+            pointerEvents: "none",
+            boxShadow: "0 4px 10px rgba(0,0,0,0.3)",
+            display: "flex",
+            gap: "8px",
+        });
+        infoDisplay.innerHTML = `
+            <span>Saved: <b style="color:#f1c40f">${saved}</b></span>
+            <span style="color:#7f8c8d">|</span>
+            <span>New: <b style="color:#2ecc71">${scraped}</b></span>
+        `;
+        container.appendChild(infoDisplay);
+    }
+
     const btn = document.createElement("button");
     btn.id = "manga-sync-fixed-btn";
     btn.innerHTML = `<span>${icon}</span>`;
     btn.title = title;
     Object.assign(btn.style, {
-        position: "fixed",
-        top: "20px",
-        right: "20px",
-        zIndex: "2147483647",
         padding: "12px 18px",
         backgroundColor: "#2c3e50",
         color: "white",
@@ -91,79 +218,22 @@ function injectButton(icon, title, clickHandler) {
         e.preventDefault();
         clickHandler();
     };
-    document.body.appendChild(btn);
+
+    container.appendChild(btn);
+    document.body.appendChild(container);
 }
 
 async function handleReaderSync() {
     const btn = document.getElementById("manga-sync-fixed-btn");
-    const selector = pageConfig.selectors?.read_chapter_num;
+    const cleanNum = getScrapedChapter();
 
-    // Safety check for empty selector
-    if (!selector || selector.trim() === "") {
-        updateBtn(btn, "Config Err", "#e74c3c", "🕮", true);
+    if (!cleanNum) {
+        updateBtn(btn, "Err/Not Found", "#e74c3c", "🕮", true);
         return;
     }
-
-    const chEl = document.querySelector(selector);
-    if (!chEl) {
-        updateBtn(btn, "Not Found", "#e74c3c", "🕮", true);
-        return;
-    }
-
-    // Text Cleaning
-    let cleanNum = chEl.innerText;
-    const replacements = pageConfig.string_replacements?.read_chapter_num;
-    if (replacements && Array.isArray(replacements)) {
-        replacements.forEach((str) => {
-            let regex;
-            if (str.startsWith("/") && str.match(/\/[gimsuy]*$/)) {
-                const lastSlash = str.lastIndexOf("/");
-                regex = new RegExp(
-                    str.substring(1, lastSlash),
-                    str.substring(lastSlash + 1),
-                );
-            } else {
-                const escapedStr = str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-                regex = new RegExp(escapedStr, "gi");
-            }
-            cleanNum = cleanNum.replace(regex, "");
-        });
-    }
-    cleanNum = cleanNum.replace(/[^0-9.]/g, "").trim();
 
     try {
-        let baseUrl = window.location.href;
-        const isInfoPage = new RegExp(pageConfig.site_structure.info_page).test(
-            baseUrl,
-        );
-
-        // 1. Try to fetch from DOM using manga_url_selector
-        if (pageConfig.manga_url_selector && !isInfoPage) {
-            const linkEl = document.querySelector(
-                pageConfig.manga_url_selector,
-            );
-            if (linkEl && linkEl.href) {
-                baseUrl = linkEl.href;
-            }
-        }
-
-        // 2. ALWAYS apply url_base formatting if it exists
-        if (pageConfig.url_base) {
-            let cleanUrl = baseUrl.replace("www.", "");
-            let cleanBase = pageConfig.url_base.replace("www.", "");
-            if (cleanUrl.includes(cleanBase)) {
-                const pathAfterBase = cleanUrl.replace(cleanBase, "");
-                let mangaSlug = pathAfterBase.split("/")[0];
-
-                // Strip volatile hex codes from the slug
-                if (pageConfig.slug_cleaner) {
-                    const regex = new RegExp(pageConfig.slug_cleaner, "i");
-                    mangaSlug = mangaSlug.replace(regex, "");
-                }
-
-                baseUrl = pageConfig.url_base + mangaSlug + "/";
-            }
-        }
+        const baseUrl = await getBaseUrl();
 
         const res = await fetch("http://localhost:3000/data/library/entry", {
             method: "PATCH",
@@ -174,6 +244,23 @@ async function handleReaderSync() {
         const result = await res.json();
         if (result.success) {
             updateBtn(btn, "✓", "#27ae60", "🕮", true);
+
+            // Immediately update the visual display bar above the button
+            const container = document.getElementById(
+                "manga-sync-fixed-btn-container",
+            );
+            if (
+                container &&
+                container.firstChild &&
+                container.firstChild.id !== "manga-sync-fixed-btn"
+            ) {
+                container.firstChild.innerHTML = `
+                    <span>Saved: <b style="color:#f1c40f">${cleanNum}</b></span>
+                    <span style="color:#7f8c8d">|</span>
+                    <span>New: <b style="color:#2ecc71">${cleanNum}</b></span>
+                `;
+            }
+
             remoteLog("INFO", "UI", "READER_SYNC_SUCCESS", "content.js", {
                 url: baseUrl,
                 chapter: cleanNum,
@@ -188,7 +275,7 @@ async function handleReaderSync() {
         updateBtn(btn, "Offline", "#e74c3c", "🕮");
         remoteLog("ERROR", "API", "READER_SYNC_OFFLINE", "content.js", {
             error: err.message,
-            url: baseUrl,
+            url: window.location.href, // fallback
         });
     }
 }
@@ -210,10 +297,12 @@ new MutationObserver(() => {
     const url = location.href;
     if (url !== lastUrl) {
         lastUrl = url;
-        
-        const oldBtn = document.getElementById("manga-sync-fixed-btn");
-        if (oldBtn) oldBtn.remove();
-        
+
+        const oldContainer = document.getElementById(
+            "manga-sync-fixed-btn-container",
+        );
+        if (oldContainer) oldContainer.remove();
+
         setTimeout(initContentScript, 1000);
     }
 }).observe(document, { subtree: true, childList: true });
