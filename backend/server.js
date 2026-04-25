@@ -1186,54 +1186,96 @@ app.post("/data/library/cleanup/covers", (req, res) => {
 });
 
 app.post("/data/library/cleanup/metadata", (req, res) => {
-    db.all(`SELECT * FROM bookmarks`, async (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
+    // 1. Fetch any existing triggers on the bookmarks table
+    db.all(
+        `SELECT name, sql FROM sqlite_master WHERE type = 'trigger' AND tbl_name = 'bookmarks'`,
+        async (err, triggers) => {
+            if (err) return res.status(500).json({ error: err.message });
 
-        let updatedCount = 0;
-        try {
-            for (let row of rows) {
-                // 1. Build a proxy entry using the current database row
-                let entry = {
-                    genres: row.genres,
-                    author: row.author,
-                    artist: row.artist,
-                    type: row.type,
-                    status: row.status,
-                    website: row.website,
-                    nsfw: row.nsfw,
-                };
+            try {
+                // 2. Temporarily DROP the triggers so they can't overrule our timestamps
+                for (let trigger of triggers) {
+                    if (trigger.name && trigger.sql) {
+                        await new Promise((r) =>
+                            db.run(`DROP TRIGGER IF EXISTS ${trigger.name}`, r),
+                        );
+                    }
+                }
 
-                // 2. Run the existing normalization logic
-                // This will automatically populate the genres/authors/artists tables with missing entries
-                // AND apply existing linking/alias rules to standardize the arrays
-                const normalized = await normalizeEntryData(entry);
+                // 3. Fetch and process bookmarks
+                db.all(`SELECT * FROM bookmarks`, async (err, rows) => {
+                    if (err) throw err;
 
-                // 3. Save the cleaned-up data back to the bookmark
-                await new Promise((resolve, reject) => {
-                    db.run(
-                        `UPDATE bookmarks SET genres = ?, author = ?, artist = ?, type = ?, nsfw = ? WHERE id = ?`,
-                        [
-                            normalized.genres,
-                            normalized.author,
-                            normalized.artist,
-                            normalized.type,
-                            normalized.nsfw,
-                            row.id,
-                        ],
-                        (updateErr) => {
-                            if (updateErr) reject(updateErr);
-                            else resolve();
-                        },
-                    );
+                    let updatedCount = 0;
+                    for (let row of rows) {
+                        let entry = {
+                            genres: row.genres,
+                            author: row.author,
+                            artist: row.artist,
+                            type: row.type,
+                            status: row.status,
+                            website: row.website,
+                            nsfw: row.nsfw,
+                        };
+
+                        const normalized = await normalizeEntryData(entry);
+
+                        // DIFF CHECK: Only update if something actually changed
+                        const hasChanges =
+                            normalized.genres !== row.genres ||
+                            normalized.author !== row.author ||
+                            normalized.artist !== row.artist ||
+                            normalized.type !== row.type ||
+                            normalized.nsfw !== row.nsfw;
+
+                        if (!hasChanges) continue;
+
+                        // Write the cleaned data AND the old timestamp.
+                        // Because the trigger is gone, the DB will actually listen to us this time.
+                        await new Promise((resolve, reject) => {
+                            db.run(
+                                `UPDATE bookmarks 
+                             SET genres = ?, author = ?, artist = ?, type = ?, nsfw = ?, timestamp = ? 
+                             WHERE id = ?`,
+                                [
+                                    normalized.genres,
+                                    normalized.author,
+                                    normalized.artist,
+                                    normalized.type,
+                                    normalized.nsfw,
+                                    row.timestamp,
+                                    row.id,
+                                ],
+                                (updateErr) => {
+                                    if (updateErr) reject(updateErr);
+                                    else resolve();
+                                },
+                            );
+                        });
+                        updatedCount++;
+                    }
+
+                    // 4. RESTORE the triggers exactly as they were
+                    for (let trigger of triggers) {
+                        if (trigger.sql) {
+                            await new Promise((r) => db.run(trigger.sql, r));
+                        }
+                    }
+
+                    res.json({ success: true, updated: updatedCount });
                 });
-                updatedCount++;
+            } catch (error) {
+                // FAILSAFE: If anything crashes, ensure we put the triggers back so we don't break the DB
+                for (let trigger of triggers) {
+                    if (trigger.sql) {
+                        await new Promise((r) => db.run(trigger.sql, r));
+                    }
+                }
+                console.error("Metadata Cleanup Error:", error);
+                res.status(500).json({ error: error.message });
             }
-            res.json({ success: true, updated: updatedCount });
-        } catch (error) {
-            console.error("Metadata Cleanup Error:", error);
-            res.status(500).json({ error: error.message });
-        }
-    });
+        },
+    );
 });
 
 app.post("/data/library/import", async (req, res) => {
