@@ -54,7 +54,26 @@ function getScrapedChapter() {
     const selector = pageConfig.selectors?.read_chapter_num;
     if (!selector || selector.trim() === "") return null;
 
-    const chEl = document.querySelector(selector);
+    let chEl = null;
+    try {
+        if (selector.startsWith("xpath:")) {
+            const xpath = selector.replace("xpath:", "").trim();
+            const snapshot = document.evaluate(
+                xpath,
+                document,
+                null,
+                XPathResult.FIRST_ORDERED_NODE_TYPE,
+                null,
+            );
+            chEl = snapshot.singleNodeValue;
+        } else {
+            chEl = document.querySelector(selector);
+        }
+    } catch (e) {
+        console.warn("Failed to parse read_chapter_num selector:", e);
+        return null;
+    }
+
     if (!chEl) return null;
 
     let cleanNum = chEl.innerText;
@@ -82,7 +101,28 @@ function getMaxChapterFromDropdown() {
     const selector = pageConfig.selectors?.chapter_list_dropdown;
     if (!selector || selector.trim() === "") return null;
 
-    const elements = document.querySelectorAll(selector);
+    let elements = [];
+    try {
+        if (selector.startsWith("xpath:")) {
+            const xpath = selector.replace("xpath:", "").trim();
+            const snapshot = document.evaluate(
+                xpath,
+                document,
+                null,
+                XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
+                null,
+            );
+            for (let i = 0; i < snapshot.snapshotLength; i++) {
+                elements.push(snapshot.snapshotItem(i));
+            }
+        } else {
+            elements = Array.from(document.querySelectorAll(selector));
+        }
+    } catch (e) {
+        console.warn("Failed to parse chapter_list_dropdown selector:", e);
+        return null;
+    }
+
     if (elements.length === 0) return null;
 
     let maxChapter = 0;

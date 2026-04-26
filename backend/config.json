@@ -245,7 +245,7 @@
           "take_first": true
         },
         "read_chapter_num": "div.chapter",
-        "chapter_list_dropdown": "div > ul > li > ul > li",
+        "chapter_list_dropdown": "xpath://div[label='Chapter']/div/ul/li/ul/li",
         "summary": ".md-md-container p",
         "artist": {
           "query": "#artist_undefined span",
