@@ -203,7 +203,7 @@ async function initContentScript() {
                 injectButton(
                     "🕮",
                     "Sync Progress",
-                    handleReaderSync,
+                    () => handleReaderSync(displayLatest),
                     savedChapter,
                     scrapedChapter,
                     displayLatest,
@@ -308,7 +308,7 @@ function injectButton(
     document.body.appendChild(container);
 }
 
-async function handleReaderSync() {
+async function handleReaderSync(currentLatest) {
     const btn = document.getElementById("manga-sync-fixed-btn");
     const cleanNum = getScrapedChapter();
 
@@ -340,7 +340,8 @@ async function handleReaderSync() {
                 container.firstChild.id !== "manga-sync-fixed-btn"
             ) {
                 // Re-fetch the latest so we don't lose it on the visual refresh
-                const latestNum = getMaxChapterFromDropdown() || "?";
+                const latestNum =
+                    getMaxChapterFromDropdown() || currentLatest || "?";
                 let latestHtml =
                     latestNum !== "?"
                         ? `<span style="color:#7f8c8d">|</span><span>Latest: <b style="color:#9b59b6">${latestNum}</b></span>`

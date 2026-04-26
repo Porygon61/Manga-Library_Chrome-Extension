@@ -124,7 +124,7 @@
           "take_first": true
         },
         "read_chapter_num": "span.text-zinc-100",
-        "chapter_list_dropdown": "",
+        "chapter_list_dropdown": "div.flex-1.relative div a",
         "summary": ".text-sm p",
         "artist": {
           "query": "div.justify-between:nth-of-type(2) a",
@@ -181,7 +181,7 @@
         "rating": "",
         "cover_image": ".summary_image img",
         "read_chapter_num": "li.active",
-        "chapter_list_dropdown": "",
+        "chapter_list_dropdown": "select.selectpicker.single-chapter-select option",
         "summary": ".summary__content p",
         "artist": "",
         "type": ""
@@ -239,7 +239,7 @@
         "rating": "span.text-primary",
         "cover_image": ".group[data-v-30788884] img.rounded",
         "read_chapter_num": "div.chapter",
-        "chapter_list_dropdown": "",
+        "chapter_list_dropdown": "div > ul > li > ul > li",
         "summary": ".md-md-container p",
         "artist": {
           "query": "#artist_undefined span",
