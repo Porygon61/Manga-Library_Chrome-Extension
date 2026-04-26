@@ -37,7 +37,8 @@
                 "*://*.toongod.org/*",
                 "*://*.asurascans.com/*",
                 "*://*.rizzcomic.com/*",
-                "*://*.philiascans.org/*"
+                "*://*.philiascans.org/*",
+                "*://*.manhwaclan.com/*"
             ],
             "js": [
                 "/content/content.js"

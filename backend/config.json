@@ -399,6 +399,55 @@
         ]
       }
     },
+    "manhwaclan.com": {
+      "name": "ManhwaClan",
+      "url_base": "https://manhwaclan.com/manga/",
+      "manga_url_selector": "",
+      "selectors": {
+        "author": "",
+        "genres": {
+          "query": ".genres-content a",
+          "type": "array"
+        },
+        "release_year": "",
+        "status": ".post-status div.summary-content",
+        "title": "h1",
+        "alt_title": {
+          "query": "xpath://div[contains(@class, 'post-content_item') and descendant::h5[contains(text(), 'Alternative')]]/div[contains(@class, 'summary-content')]",
+          "type": "array"
+        },
+        "latest_chapter": "li.wp-manga-chapter:nth-of-type(1)>a",
+        "latest_chapter_update_date": "li:nth-of-type(1) .chapter-release-date i",
+        "rating": ".post-total-rating span",
+        "cover_image": "",
+        "read_chapter_num": "li.active",
+        "chapter_list_dropdown": "select.selectpicker.single-chapter-select option",
+        "summary": ".summary__content p",
+        "artist": "",
+        "type": ""
+      },
+      "selector_exclusions": {},
+      "string_replacements": {
+        "latest_chapter": [
+          "Chapter"
+        ],
+        "read_chapter_num": [
+          "Chapter"
+        ]
+      },
+      "site_structure": {
+        "info_page": "^https://manhwaclan\\.com/manga/[^/]+/?$",
+        "reading_page": "^https://manhwaclan\\.com/manga/[^/]+/[^/]+/?$"
+      },
+      "features": {
+        "quickSync": [
+          "info_page"
+        ],
+        "autoUpdateCurChapter": [
+          "reading_page"
+        ]
+      }
+    },
     "toongod.org": {
       "name": "ToonGod",
       "url_base": "https://toongod.org/webtoon/",
@@ -428,7 +477,7 @@
           "take_first": true
         },
         "rating": ".post-total-rating span",
-        "cover_image": ".summary_image img",
+        "cover_image": "",
         "read_chapter_num": "li.active",
         "chapter_list_dropdown": "",
         "summary": ".summary__content p:nth-of-type(1)",
