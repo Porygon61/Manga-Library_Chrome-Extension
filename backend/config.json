@@ -51,6 +51,7 @@
         "rating": "#interest_sectl .rating_num",
         "cover_image": ".cover img",
         "read_chapter_num": "#dropdown-chapter-page",
+        "chapter_list_dropdown": ".dropdown-menu.chapter ul li a",
         "summary": ".manga_summary",
         "artist": "",
         "type": ""
@@ -123,6 +124,7 @@
           "take_first": true
         },
         "read_chapter_num": "span.text-zinc-100",
+        "chapter_list_dropdown": "",
         "summary": ".text-sm p",
         "artist": {
           "query": "div.justify-between:nth-of-type(2) a",
@@ -179,6 +181,7 @@
         "rating": "",
         "cover_image": ".summary_image img",
         "read_chapter_num": "li.active",
+        "chapter_list_dropdown": "",
         "summary": ".summary__content p",
         "artist": "",
         "type": ""
@@ -236,6 +239,7 @@
         "rating": "span.text-primary",
         "cover_image": ".group[data-v-30788884] img.rounded",
         "read_chapter_num": "div.chapter",
+        "chapter_list_dropdown": "",
         "summary": ".md-md-container p",
         "artist": {
           "query": "#artist_undefined span",
@@ -302,6 +306,7 @@
         "rating": "div[itemprop='ratingValue']",
         "cover_image": "img[itemprop='image']",
         "read_chapter_num": "span:nth-of-type(3) span[itemprop='name']",
+        "chapter_list_dropdown": "",
         "summary": "[itemprop='description'] p",
         "artist": {
           "query": "xpath://div[contains(@class, 'imptdt') and contains(text(), 'Artist')]/i",
@@ -362,6 +367,7 @@
         "rating": ".post-total-rating span",
         "cover_image": ".summary_image img",
         "read_chapter_num": "li.active",
+        "chapter_list_dropdown": "",
         "summary": ".summary__content p:nth-of-type(1)",
         "artist": {
           "query": ".artist-content a",

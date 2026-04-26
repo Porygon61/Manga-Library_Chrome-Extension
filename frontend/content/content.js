@@ -78,6 +78,30 @@ function getScrapedChapter() {
     return cleanNum.replace(/[^0-9.]/g, "").trim();
 }
 
+function getMaxChapterFromDropdown() {
+    const selector = pageConfig.selectors?.chapter_list_dropdown;
+    if (!selector || selector.trim() === "") return null;
+
+    const elements = document.querySelectorAll(selector);
+    if (elements.length === 0) return null;
+
+    let maxChapter = 0;
+
+    elements.forEach((el) => {
+        // Check 'value' attribute first (for <option> tags), fallback to innerText
+        let text = el.value || el.innerText;
+
+        // Strip out everything except numbers and decimals
+        let cleanNum = parseFloat(String(text).replace(/[^\d.]/g, ""));
+
+        if (!isNaN(cleanNum) && cleanNum > maxChapter) {
+            maxChapter = cleanNum;
+        }
+    });
+
+    return maxChapter > 0 ? maxChapter.toString() : null;
+}
+
 async function initContentScript() {
     const { isConnected, masterConfig } = await chrome.storage.local.get([
         "isConnected",
@@ -113,6 +137,7 @@ async function initContentScript() {
                 const baseUrl = await getBaseUrl();
                 const scrapedChapter = getScrapedChapter() || "?";
                 let savedChapter = "?";
+                let displayLatest = getMaxChapterFromDropdown() || "?";
 
                 try {
                     const res = await fetch(
@@ -124,8 +149,54 @@ async function initContentScript() {
                         },
                     );
                     const entry = await res.json();
-                    if (entry && entry.current_chapter) {
-                        savedChapter = entry.current_chapter;
+
+                    if (entry) {
+                        if (entry.current_chapter)
+                            savedChapter = entry.current_chapter;
+                        if (entry.latest_chapter && displayLatest === "?")
+                            displayLatest = entry.latest_chapter;
+
+                        // --- SILENT UPDATE LOGIC ---
+                        if (displayLatest !== "?") {
+                            const dbLatest = parseFloat(
+                                String(entry.latest_chapter || "0").replace(
+                                    /[^\d.]/g,
+                                    "",
+                                ),
+                            );
+                            const parsedDropdownMax = parseFloat(displayLatest);
+
+                            if (parsedDropdownMax > dbLatest) {
+                                fetch(
+                                    "http://localhost:3000/data/library/entry",
+                                    {
+                                        method: "PATCH",
+                                        headers: {
+                                            "Content-Type": "application/json",
+                                        },
+                                        body: JSON.stringify({
+                                            url: baseUrl,
+                                            updates: {
+                                                latest_chapter: displayLatest,
+                                            },
+                                        }),
+                                    },
+                                )
+                                    .then(() =>
+                                        remoteLog(
+                                            "INFO",
+                                            "UI",
+                                            "SILENT_UPDATE_LATEST",
+                                            "content.js",
+                                            {
+                                                url: baseUrl,
+                                                latest: displayLatest,
+                                            },
+                                        ),
+                                    )
+                                    .catch((e) => {});
+                            }
+                        }
                     }
                 } catch (e) {}
 
@@ -135,6 +206,7 @@ async function initContentScript() {
                     handleReaderSync,
                     savedChapter,
                     scrapedChapter,
+                    displayLatest,
                 );
             } else if (isInfo && globalSettings.enableAddNewMangaBtn) {
                 injectButton("+", "Quick Add/Sync", () => {
@@ -158,7 +230,14 @@ async function initContentScript() {
     }
 }
 
-function injectButton(icon, title, clickHandler, saved = null, scraped = null) {
+function injectButton(
+    icon,
+    title,
+    clickHandler,
+    saved = null,
+    scraped = null,
+    latest = null,
+) {
     const container = document.createElement("div");
     container.id = "manga-sync-fixed-btn-container";
     Object.assign(container.style, {
@@ -189,10 +268,16 @@ function injectButton(icon, title, clickHandler, saved = null, scraped = null) {
             display: "flex",
             gap: "8px",
         });
+        let latestHtml =
+            latest && latest !== "?"
+                ? `<span style="color:#7f8c8d">|</span><span>Latest: <b style="color:#9b59b6">${latest}</b></span>`
+                : "";
+
         infoDisplay.innerHTML = `
             <span>Saved: <b style="color:#f1c40f">${saved}</b></span>
             <span style="color:#7f8c8d">|</span>
             <span>New: <b style="color:#2ecc71">${scraped}</b></span>
+            ${latestHtml}
         `;
         container.appendChild(infoDisplay);
     }
@@ -254,10 +339,18 @@ async function handleReaderSync() {
                 container.firstChild &&
                 container.firstChild.id !== "manga-sync-fixed-btn"
             ) {
+                // Re-fetch the latest so we don't lose it on the visual refresh
+                const latestNum = getMaxChapterFromDropdown() || "?";
+                let latestHtml =
+                    latestNum !== "?"
+                        ? `<span style="color:#7f8c8d">|</span><span>Latest: <b style="color:#9b59b6">${latestNum}</b></span>`
+                        : "";
+
                 container.firstChild.innerHTML = `
                     <span>Saved: <b style="color:#f1c40f">${cleanNum}</b></span>
                     <span style="color:#7f8c8d">|</span>
                     <span>New: <b style="color:#2ecc71">${cleanNum}</b></span>
+                    ${latestHtml}
                 `;
             }
 
