@@ -336,6 +336,69 @@
         ]
       }
     },
+    "philiascans.org": {
+      "name": "PhiliaScans",
+      "url_base": "https://philiascans.org/series/",
+      "manga_url_selector": "",
+      "selectors": {
+        "author": {
+          "query": "div:nth-of-type(6) span.stat-value",
+          "type": "array"
+        },
+        "genres": {
+          "query": "a.genre-link",
+          "type": "array"
+        },
+        "release_year": "div:nth-of-type(8) span.stat-value",
+        "status": "div.stat-item:nth-of-type(2) span.manga",
+        "title": "h1",
+        "alt_title": {
+          "query": "h6",
+          "type": "array",
+          "split_by": "•"
+        },
+        "latest_chapter": {
+          "query": "zebi",
+          "take_first": true
+        },
+        "latest_chapter_update_date": "",
+        "rating": "span[itemprop='ratingValue']",
+        "cover_image": "img.cover",
+        "read_chapter_num": "b.current-type-number",
+        "chapter_list_dropdown": ".item a",
+        "summary": ".limit-w p",
+        "artist": {
+          "query": "div:nth-of-type(7) span.stat-value",
+          "type": "array"
+        },
+        "type": "div.stat-item:nth-of-type(1) span.manga"
+      },
+      "selector_exclusions": {},
+      "string_replacements": {
+        "read_chapter_num": [
+          "Chapter"
+        ],
+        "alt_title": [
+          "@COMIC"
+        ],
+        "latest_chapter": [
+          "Chapter",
+          ":"
+        ]
+      },
+      "site_structure": {
+        "info_page": "^https://philiascans\\.org/series/[^/]+/?$",
+        "reading_page": "^https://philiascans\\.org/series/[^/]+/[^/]+/?$"
+      },
+      "features": {
+        "quickSync": [
+          "info_page"
+        ],
+        "autoUpdateCurChapter": [
+          "reading_page"
+        ]
+      }
+    },
     "toongod.org": {
       "name": "ToonGod",
       "url_base": "https://toongod.org/webtoon/",
