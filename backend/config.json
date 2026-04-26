@@ -222,7 +222,10 @@
           "type": "array"
         },
         "release_year": ".dot span",
-        "status": ".dot span",
+        "status": {
+          "query": ".dot span",
+          "take_first": true
+        },
         "title": "p.mb-1",
         "alt_title": {
           "query": ".gap-6 .mb-1 span",
@@ -237,7 +240,10 @@
           "take_first": true
         },
         "rating": "span.text-primary",
-        "cover_image": ".group[data-v-30788884] img.rounded",
+        "cover_image": {
+          "query": "xpath://img[@*[starts-with(name(), 'data-v-')] and contains(@class, 'rounded')]",
+          "take_first": true
+        },
         "read_chapter_num": "div.chapter",
         "chapter_list_dropdown": "div > ul > li > ul > li",
         "summary": ".md-md-container p",
