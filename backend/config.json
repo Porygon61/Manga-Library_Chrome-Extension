@@ -181,7 +181,7 @@
         "rating": "",
         "cover_image": ".summary_image img",
         "read_chapter_num": "li.active",
-        "chapter_list_dropdown": "select.selectpicker.single-chapter-select option",
+        "chapter_list_dropdown": "div.chapters_selectbox_holder select option",
         "summary": ".summary__content p",
         "artist": "",
         "type": ""

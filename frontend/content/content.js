@@ -50,6 +50,51 @@ async function getBaseUrl() {
     return baseUrl;
 }
 
+// Helper to mirror scraper.js logic inside content.js
+function extractTextWithConfig(element, fieldName) {
+    if (!element) return "";
+    const clone = element.cloneNode(true);
+
+    // 1. Apply Exclusions (removes dates, unwanted spans, etc.)
+    const exclusionSelector = pageConfig.selector_exclusions?.[fieldName];
+    if (exclusionSelector) {
+        clone.querySelectorAll(exclusionSelector).forEach((ex) => ex.remove());
+    }
+
+    // 2. Extract Text (Target pure text nodes first to avoid inner junk)
+    let finalText = "";
+    const textNodes = Array.from(clone.childNodes).filter(
+        (node) => node.nodeType === 3 && node.textContent.trim().length > 0,
+    );
+
+    if (textNodes.length > 0) {
+        finalText = textNodes.map((node) => node.textContent.trim()).join(" ");
+    } else {
+        finalText = clone.textContent.replace(/\s\s+/g, " ").trim();
+    }
+
+    // 3. Apply String Replacements
+    const replacements = pageConfig.string_replacements?.[fieldName];
+    if (replacements && Array.isArray(replacements)) {
+        replacements.forEach((str) => {
+            let regex;
+            if (str.startsWith("/") && str.match(/\/[gimsuy]*$/)) {
+                const lastSlash = str.lastIndexOf("/");
+                regex = new RegExp(
+                    str.substring(1, lastSlash),
+                    str.substring(lastSlash + 1),
+                );
+            } else {
+                const escapedStr = str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+                regex = new RegExp(escapedStr, "gi");
+            }
+            finalText = finalText.replace(regex, "");
+        });
+    }
+
+    return finalText.trim();
+}
+
 function getScrapedChapter() {
     const selector = pageConfig.selectors?.read_chapter_num;
     if (!selector || selector.trim() === "") return null;
@@ -76,24 +121,8 @@ function getScrapedChapter() {
 
     if (!chEl) return null;
 
-    let cleanNum = chEl.innerText;
-    const replacements = pageConfig.string_replacements?.read_chapter_num;
-    if (replacements && Array.isArray(replacements)) {
-        replacements.forEach((str) => {
-            let regex;
-            if (str.startsWith("/") && str.match(/\/[gimsuy]*$/)) {
-                const lastSlash = str.lastIndexOf("/");
-                regex = new RegExp(
-                    str.substring(1, lastSlash),
-                    str.substring(lastSlash + 1),
-                );
-            } else {
-                const escapedStr = str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-                regex = new RegExp(escapedStr, "gi");
-            }
-            cleanNum = cleanNum.replace(regex, "");
-        });
-    }
+    // Use our new config-aware scraper
+    let cleanNum = extractTextWithConfig(chEl, "read_chapter_num");
     return cleanNum.replace(/[^0-9.]/g, "").trim();
 }
 
@@ -128,10 +157,15 @@ function getMaxChapterFromDropdown() {
     let maxChapter = 0;
 
     elements.forEach((el) => {
-        // Check 'value' attribute first (for <option> tags), fallback to innerText
-        let text = el.value || el.innerText;
+        // Feed the element through the standard scraper exclusions/replacements
+        let text = extractTextWithConfig(el, "chapter_list_dropdown");
 
-        // Strip out everything except numbers and decimals
+        // Fallback for <option> tags if standard text extraction returned empty
+        if (!text && el.value) {
+            text = el.value;
+        }
+
+        // Now that exclusions/replacements have cleaned the string, it's safe to strip letters
         let cleanNum = parseFloat(String(text).replace(/[^\d.]/g, ""));
 
         if (!isNaN(cleanNum) && cleanNum > maxChapter) {
