@@ -1553,6 +1553,113 @@ app.post("/data/pending/resolve", async (req, res) => {
     );
 });
 
+/* DUPLICATE DETECTION & MERGING */
+app.get("/data/library/duplicates", (req, res) => {
+    db.all("SELECT id, title, alt_title FROM bookmarks", (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+
+        function tokenize(str) {
+            if (!str) return new Set();
+            return new Set(str.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 2));
+        }
+
+        function calcSim(s1, s2) {
+            if (!s1 || !s2) return 0;
+            const t1 = s1.toLowerCase().trim();
+            const t2 = s2.toLowerCase().trim();
+            if (t1 === t2) return 1;
+            if (t1.includes(t2) || t2.includes(t1)) return 0.85; // Strong substring match
+
+            let set1 = tokenize(t1);
+            let set2 = tokenize(t2);
+            if (set1.size === 0 || set2.size === 0) return 0;
+            
+            let inter = 0;
+            for (let w of set1) if (set2.has(w)) inter++;
+            return (inter * 2) / (set1.size + set2.size); // Dice coefficient
+        }
+
+        let matches = [];
+        for (let i = 0; i < rows.length; i++) {
+            for (let j = i + 1; j < rows.length; j++) {
+                let m1 = rows[i];
+                let m2 = rows[j];
+                
+                let score = calcSim(m1.title, m2.title);
+                let reason = "Title Similarity";
+
+                // Check alt titles for cross-match
+                let m1Alts = [];
+                let m2Alts = [];
+                try { m1Alts = JSON.parse(m1.alt_title || '[]'); } catch (e) {}
+                try { m2Alts = JSON.parse(m2.alt_title || '[]'); } catch (e) {}
+
+                const hasAltMatch = m1Alts.some(a => a.toLowerCase() === m2.title.toLowerCase() || m2Alts.some(b => b.toLowerCase() === a.toLowerCase())) ||
+                                    m2Alts.some(a => a.toLowerCase() === m1.title.toLowerCase());
+
+                if (hasAltMatch) {
+                    score = 1;
+                    reason = "Alternative Title Match";
+                }
+
+                if (score > 0.70) {
+                    matches.push({ m1, m2, score: (score * 100).toFixed(0), reason });
+                }
+            }
+        }
+        
+        matches.sort((a, b) => b.score - a.score);
+        res.json(matches);
+    });
+});
+
+app.post("/data/library/manual-merge", (req, res) => {
+    const { primaryId, secondaryId } = req.body;
+    
+    db.get("SELECT * FROM bookmarks WHERE id = ?", [primaryId], (err, primary) => {
+        db.get("SELECT * FROM bookmarks WHERE id = ?", [secondaryId], (err, secondary) => {
+            if (!primary || !secondary) return res.status(404).json({ error: "One or both entries not found" });
+
+            // Helper to safely merge arrays stored as strings
+            const mergeArr = (a, b) => {
+                let arr1 = [], arr2 = [];
+                try { arr1 = JSON.parse(a || '[]'); } catch (e) { if (a) arr1 = [a]; }
+                try { arr2 = JSON.parse(b || '[]'); } catch (e) { if (b) arr2 = [b]; }
+                return JSON.stringify([...new Set([...arr1, ...arr2])]);
+            };
+
+            const newAlt = mergeArr(primary.alt_title, secondary.alt_title);
+            const newGen = mergeArr(primary.genres, secondary.genres);
+            const newAuth = mergeArr(primary.author, secondary.author);
+            const newArt = mergeArr(primary.artist, secondary.artist);
+            const newWeb = mergeArr(primary.website, secondary.website);
+
+            // Inherit the highest progress and latest chapter numbers
+            const getNum = (c) => parseFloat(String(c || "0").replace(/[^\d.]/g, "")) || 0;
+            const maxCur = getNum(primary.current_chapter) > getNum(secondary.current_chapter) ? primary.current_chapter : secondary.current_chapter;
+            const maxLat = getNum(primary.latest_chapter) > getNum(secondary.latest_chapter) ? primary.latest_chapter : secondary.latest_chapter;
+
+            db.serialize(() => {
+                // Update primary with combined properties
+                db.run(
+                    `UPDATE bookmarks SET alt_title=?, genres=?, author=?, artist=?, website=?, current_chapter=?, latest_chapter=? WHERE id=?`,
+                    [newAlt, newGen, newAuth, newArt, newWeb, maxCur, maxLat, primaryId]
+                );
+
+                // Transfer URL mappings
+                db.run(`UPDATE url_mapping SET bookmark_id=? WHERE bookmark_id=?`, [primaryId, secondaryId]);
+                
+                // Cleanup secondary
+                db.run(`DELETE FROM pending_updates WHERE bookmark_id=?`, [secondaryId]);
+                db.run(`DELETE FROM bookmarks WHERE id=?`, [secondaryId]);
+            });
+
+            res.json({ success: true });
+        });
+    });
+});
+/* END DUPLICATE DETECTION & MERGING */
+
 app.use((err, req, res, next) => {
     console.error(
         `🔥 API Error on ${req.method} ${req.originalUrl}:`,
