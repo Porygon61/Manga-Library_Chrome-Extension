@@ -51,7 +51,7 @@
         "rating": "#interest_sectl .rating_num",
         "cover_image": ".cover img",
         "read_chapter_num": "#dropdown-chapter-page",
-        "chapter_list_dropdown": ".dropdown-menu.chapter ul li a",
+        "chapter_list_dropdown": "ul.dropdown-menu.chapter li a",
         "summary": ".manga_summary",
         "artist": "",
         "type": ""
@@ -76,6 +76,10 @@
         ],
         "summary": [
           "not found..."
+        ],
+        "chapter_list_dropdown": [
+          "Ch.",
+          "/\\b[Vv]ol\\.\\s*\\d+\\b/g"
         ]
       },
       "site_structure": {
