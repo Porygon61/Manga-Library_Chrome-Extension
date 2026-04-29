@@ -79,7 +79,8 @@
         ],
         "chapter_list_dropdown": [
           "Ch.",
-          "/\\b[Vv]ol\\.\\s*\\d+\\b/g"
+          "/\\b[Vv]ol\\.\\s*\\d+\\b/g",
+          "/\\s*[:\\-].*$/g"
         ]
       },
       "site_structure": {

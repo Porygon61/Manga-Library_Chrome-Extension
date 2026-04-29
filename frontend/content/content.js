@@ -123,7 +123,8 @@ function getScrapedChapter() {
 
     // Use our new config-aware scraper
     let cleanNum = extractTextWithConfig(chEl, "read_chapter_num");
-    return cleanNum.replace(/[^0-9.]/g, "").trim();
+    let match = cleanNum.match(/\d+(\.\d+)?/);
+    return match ? match[0] : null;
 }
 
 function getMaxChapterFromDropdown() {
@@ -165,8 +166,9 @@ function getMaxChapterFromDropdown() {
             text = el.value;
         }
 
-        // Now that exclusions/replacements have cleaned the string, it's safe to strip letters
-        let cleanNum = parseFloat(String(text).replace(/[^\d.]/g, ""));
+        // Extract the first contiguous number block after replacements
+        let match = String(text).match(/\d+(\.\d+)?/);
+        let cleanNum = match ? parseFloat(match[0]) : NaN;
 
         if (!isNaN(cleanNum) && cleanNum > maxChapter) {
             maxChapter = cleanNum;
