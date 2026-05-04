@@ -490,7 +490,7 @@
         "rating": ".post-total-rating span",
         "cover_image": "",
         "read_chapter_num": "li.active",
-        "chapter_list_dropdown": "",
+        "chapter_list_dropdown": "select.selectpicker.single-chapter-select option",
         "summary": ".summary__content p:nth-of-type(1)",
         "artist": {
           "query": ".artist-content a",
