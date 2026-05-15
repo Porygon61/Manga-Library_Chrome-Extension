@@ -1,4 +1,5 @@
 // scraper.js
+// TODO - Add this to backend
 export function executeScraper(configs, domain) {
     const site = configs.websites[domain];
     if (!site || !site.selectors) return { Error: "No selectors for " + domain };

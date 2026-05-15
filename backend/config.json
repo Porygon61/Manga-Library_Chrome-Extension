@@ -422,7 +422,7 @@
         },
         "release_year": "",
         "status": ".post-status div.summary-content",
-        "title": "h1",
+        "title": "div.post-title h1",
         "alt_title": {
           "query": "xpath://div[contains(@class, 'post-content_item') and descendant::h5[contains(text(), 'Alternative')]]/div[contains(@class, 'summary-content')]",
           "type": "array"
