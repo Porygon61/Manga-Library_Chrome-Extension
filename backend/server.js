@@ -351,6 +351,7 @@ async function downloadFavicon(url) {
     }
 }
 
+
 async function downloadCover(url) {
     if (!url || !url.startsWith("http")) return url;
     if (url.includes("localhost:3000/covers/")) return url;

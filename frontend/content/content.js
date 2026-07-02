@@ -95,6 +95,7 @@ function extractTextWithConfig(element, fieldName) {
     return finalText.trim();
 }
 
+
 function getScrapedChapter() {
     const selector = pageConfig.selectors?.read_chapter_num;
     if (!selector || selector.trim() === "") return null;
@@ -270,11 +271,11 @@ async function initContentScript() {
                                             },
                                         ),
                                     )
-                                    .catch((e) => {});
+                                    .catch((e) => { });
                             }
                         }
                     }
-                } catch (e) {}
+                } catch (e) { }
 
                 injectButton(
                     "🕮",
@@ -302,7 +303,8 @@ async function initContentScript() {
             }
         }
     } catch (e) {
-        console.error("MangaTracker Init Error:", e);
+        console.error("MangaTracker Init Error:", e.name, e.message);
+        console.error(e.stack);
     }
 }
 

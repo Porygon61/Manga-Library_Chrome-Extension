@@ -38,7 +38,9 @@
                 "*://*.asurascans.com/*",
                 "*://*.rizzcomic.com/*",
                 "*://*.philiascans.org/*",
-                "*://*.manhwaclan.com/*"
+                "*://*.manhwaclan.com/*",
+                "*://*.mangaupdates.com/*",
+                "*://*.utoon.net/*"
             ],
             "js": [
                 "/content/content.js"

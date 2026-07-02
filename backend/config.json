@@ -178,7 +178,7 @@
         "status": ".post-status div.summary-content",
         "title": ".post-title h1",
         "alt_title": {
-          "query": "div.post-content_item:nth-of-type(3) div.summary-content",
+          "query": "xpath://div[./div/h5[contains(normalize-space(), 'Alternative')]]/div[@class='summary-content']",
           "type": "array"
         },
         "latest_chapter": "li.wp-manga-chapter:nth-of-type(1) a",
@@ -203,6 +203,61 @@
       "site_structure": {
         "info_page": "^https://manhuaus\\.com/manga/[^/]+/?$",
         "reading_page": "^https://manhuaus\\.com/manga/[^/]+/[^/]+/?$"
+      },
+      "features": {
+        "quickSync": [
+          "info_page"
+        ],
+        "autoUpdateCurChapter": [
+          "reading_page"
+        ]
+      }
+    },
+    "utoon.net": {
+      "name": "Utoon",
+      "url_base": "https://utoon.net/manga/",
+      "manga_url_selector": "",
+      "selectors": {
+        "author": "",
+        "genres": {
+          "query": ".genres a.genre",
+          "type": "array"
+        },
+        "release_year": "xpath://div[@class='sir'][span[@class='l'][contains(normalize-space(), 'Released')]]/span[@class='v']",
+        "status": "xpath://div[@class='sir'][span[@class='l'][contains(normalize-space(), 'Status')]]/span[@class='v']",
+        "title": "h1.htitle",
+        "alt_title": {
+          "query": "span.halt-tag",
+          "type": "array"
+        },
+        "latest_chapter": "div.clist a:first-child .ctitle",
+        "latest_chapter_update_date": "div.clist a:first-child .cdate",
+        "rating": ".rc-score rc-num",
+        "cover_image": "div.poster img",
+        "read_chapter_num": "#topbar div.c",
+        "chapter_list_dropdown": ".clist a:first-child .ctitle",
+        "summary": "#syn",
+        "artist": "",
+        "type": "xpath://div[@class='sir'][span[@class='l'][contains(normalize-space(), 'Type')]]/span[@class='v']"
+      },
+      "selector_exclusions": {
+        "read_chapter_num": "span"
+      },
+      "string_replacements": {
+        "latest_chapter": [
+          "Chapter"
+        ],
+        "read_chapter_num": [
+          "Chapter",
+          "·"
+        ],
+        "chapter_list_dropdown": [
+          "Chapter"
+        ]
+      },
+      "site_structure": {
+        "info_page": "^https://utoon\\.net/manga/[^/]+/?$",
+        "reading_page": "^https://utoon\\.net/manga/[^/]+/[^/]+/?$"
       },
       "features": {
         "quickSync": [
@@ -449,6 +504,57 @@
       "site_structure": {
         "info_page": "^https://manhwaclan\\.com/manga/[^/]+/?$",
         "reading_page": "^https://manhwaclan\\.com/manga/[^/]+/[^/]+/?$"
+      },
+      "features": {
+        "quickSync": [
+          "info_page"
+        ],
+        "autoUpdateCurChapter": [
+          "reading_page"
+        ]
+      }
+    },
+    "mangaupdates.com": {
+      "name": "MangaUpdates",
+      "url_base": "https://mangaupdates.com/series/",
+      "manga_url_selector": "",
+      "selectors": {
+        "author": {
+          "query": "div[data-cy='info-box-authors'] span",
+          "type": "array"
+        },
+        "genres": {
+          "query": "div[data-cy='info-box-genres'] span>u",
+          "type": "array"
+        },
+        "release_year": "div[data-cy='info-box-year'] a",
+        "status": "",
+        "title": "span.releasestitle.tabletitle",
+        "alt_title": {
+          "query": "div[data-cy='info-box-associated'] div",
+          "type": "array"
+        },
+        "latest_chapter": "",
+        "latest_chapter_update_date": "",
+        "rating": "",
+        "cover_image": {
+          "query": "div[data-cy='info-box-image'] img",
+          "take_first": true
+        },
+        "read_chapter_num": "",
+        "chapter_list_dropdown": "",
+        "summary": "div[data-cy='info-box-description'] p",
+        "artist": {
+          "query": "div[data-cy='info-box-artists'] span",
+          "type": "array"
+        },
+        "type": "div[data-cy='info-box-type']"
+      },
+      "selector_exclusions": {},
+      "string_replacements": {},
+      "site_structure": {
+        "info_page": "^https://www\\.mangaupdates\\.com/series/[a-z0-9]+/[a-z0-9\\-]+",
+        "reading_page": "https://www.mangaupdates.com/site/faq"
       },
       "features": {
         "quickSync": [

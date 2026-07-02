@@ -624,6 +624,12 @@
                 <option value="year_asc">Release Year (Oldest)</option>
                 <option value="chapters_desc">Chapters (Most to Fewest)</option>
                 <option value="chapters_asc">Chapters (Fewest to Most)</option>
+                <option value="latest_chapters_desc">
+                    Latest Chapter (Most to Fewest)
+                </option>
+                <option value="latest_chapters_asc">
+                    Latest Chapter (Fewest to Most)
+                </option>
                 <option value="completion_desc">
                     Completion (High to Low)
                 </option>
@@ -1008,7 +1014,7 @@
                             id="entitySearch"
                             placeholder="Filter entities..."
                             class="edit-input"
-                            oninput="filterEntities()"
+                            oninput="renderMainEntityList()"
                             style="margin-bottom: 10px"
                         />
                         <div
@@ -1750,6 +1756,16 @@
                         return (
                             parseFloat(a.current_chapter || 0) -
                             parseFloat(b.current_chapter || 0)
+                        );
+                    if (sort === "latest_chapters_desc")
+                        return (
+                            parseFloat(b.latest_chapter || 0) -
+                            parseFloat(a.latest_chapter || 0)
+                        );
+                    if (sort === "latest_chapters_asc")
+                        return (
+                            parseFloat(a.latest_chapter || 0) -
+                            parseFloat(b.latest_chapter || 0)
                         );
                     const getCompletion = (manga) => {
                         // Strip out any non-numeric/non-decimal characters (e.g., "Ch. 15.5" -> 15.5)
@@ -2575,10 +2591,6 @@
                     `,
                     )
                     .join("");
-            };
-
-            window.filterEntities = function () {
-                renderMainEntityList();
             };
 
             window.selectMainEntity = function (id) {
