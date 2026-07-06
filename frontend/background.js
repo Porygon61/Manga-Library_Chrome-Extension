@@ -70,7 +70,6 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     }
 });
 
-// TODO - Add this to backend
 async function handleBackgroundSync(tabUrl, tabId) {
     try {
         remoteLog("INFO", "SYSTEM", "BACKGROUND_SYNC_START", "background.js", {
